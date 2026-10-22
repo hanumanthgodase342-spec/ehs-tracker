@@ -1,0 +1,15 @@
+{
+  "name": "EHS Activity Tracker",
+  "short_name": "EHS Tracker",
+  "description": "Offline EHS activity, legal, certificate, competence, permit and contractor tracker.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E1620",
+  "theme_color": "#1B2A41",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
