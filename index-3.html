@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1B2A41">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>EHS Activity Tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column on phones; from 900px, panels pair up; the heat map and tables stay readable on wide screens.
+   Palette: navy for structure, safety green for activity, amber and red for attention, pastel bands for risk. */
+:root{
+  --bg:#F3F6F4; --surface:#FFFFFF; --fg:#16202B; --muted:#55636F; --line:#D5DED9;
+  --navy:#1B2A41; --accent:#12805C; --warn:#A35A00; --danger:#B42318;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1620; --surface:#16212D; --fg:#E7EEF3; --muted:#9AA8B6; --line:#2A3847;
+    --navy:#9FB4D6; --accent:#3CC597; --warn:#F5A65B; --danger:#F87171; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1620; --surface:#16212D; --fg:#E7EEF3; --muted:#9AA8B6; --line:#2A3847;
+  --navy:#9FB4D6; --accent:#3CC597; --warn:#F5A65B; --danger:#F87171; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);padding-block:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:16px;min-width:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--bg)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#FFFFFF}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;width:100%}
+input[type="checkbox"]{width:auto}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sub{color:var(--muted);margin:2px 0 0;font-size:13px}
+h2{font:600 16px/1.3 var(--sans);margin:0 0 10px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.notice{border-left:3px solid var(--warn)}
+.hero{background:#1B2A41;color:#FFFFFF;border-radius:14px;padding:18px 20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.hero h1{margin:0;font:600 22px/1.2 var(--sans);letter-spacing:-.01em}
+.hero p{margin:4px 0 0;opacity:.85;font-size:13px}
+.hero .ctl{display:flex;gap:6px;flex-wrap:wrap}
+.hero .ctl button{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.35)}
+.hero .ctl button[aria-pressed="true"]{background:#3CC597;border-color:#3CC597;color:#0E1620}
+.ring{--p:0;width:96px;height:96px;border-radius:50%;flex:none;
+  background:conic-gradient(#3CC597 calc(var(--p)*1%), rgba(255,255,255,.18) 0);display:grid;place-items:center}
+.ring span{width:76px;height:76px;border-radius:50%;background:#1B2A41;display:grid;place-items:center;text-align:center;font-size:11px;line-height:1.2}
+.ring b{display:block;font:600 22px/1 var(--sans)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;border-radius:0;background:transparent;padding:10px 12px;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.kpi{border-top:3px solid var(--accent)}
+.kpi.warn{border-top-color:var(--warn)}
+.kpi.bad{border-top-color:var(--danger)}
+.kpi b{display:block;font:500 24px/1.2 var(--sans);font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.grid2{display:grid;gap:16px;grid-template-columns:1fr;min-width:0}
+@media (min-width:900px){.grid2{grid-template-columns:1fr 1fr}}
+.hbar{display:grid;grid-template-columns:150px minmax(0,1fr) 36px;gap:10px;align-items:center;font-size:13px;margin-bottom:8px}
+.hbar span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.track{background:var(--line);border-radius:4px;height:10px;overflow:hidden}
+.fill{background:var(--accent);height:100%}
+.trend{display:flex;align-items:flex-end;gap:3px;height:150px;min-width:0}
+.trend>div{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.trend i{display:block;width:100%;background:var(--accent);border-radius:3px 3px 0 0}
+.trend small{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.b{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;color:#16202B;white-space:nowrap}
+.b-ok{background:#CFEBDD}.b-warn{background:#FFE8A3}.b-bad{background:#F7A8A8}.b-info{background:#D6E4F5}
+.tag{display:inline-block;padding:0 6px;border-radius:6px;font-size:11px;border:1px solid var(--line);color:var(--muted);margin-left:4px}
+.tablewrap{overflow-x:auto;min-width:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.form{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:640px){.form{grid-template-columns:1fr 1fr 1fr}}
+.form label{display:grid;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+.form label.check{display:flex;align-items:center;gap:8px;color:var(--fg)}
+.form .wide{grid-column:1/-1}
+.heat{display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));gap:4px;font-size:12px;color:var(--muted)}
+.cell{min-height:52px;border-radius:6px;display:grid;place-items:center;color:#16202B;font:600 15px var(--sans)}
+.insights{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.insights li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}
+.slides{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:700px){.slides{grid-template-columns:1fr 1fr}}
+.slide{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+.slide-head{background:#1B2A41;color:#FFFFFF;padding:12px 14px}
+.slide-head small{font-family:var(--mono);opacity:.8}
+.slide-head h3{margin:2px 0 0;font:600 15px/1.3 var(--sans);text-wrap:balance}
+.slide ul{margin:0;padding:12px 14px 14px 30px;display:grid;gap:6px;overflow-wrap:anywhere}
+textarea.mono{font-family:var(--mono);font-size:12px;white-space:pre;overflow:auto;min-height:280px}
+[hidden]{display:none!important}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div>
+      <h1>EHS Activity Tracker</h1>
+      <p>Activity, legal compliance, certificates and TPI, competence, permits and contractors, in one place.</p>
+      <div class="ctl" role="group" aria-label="Period view" style="margin-top:12px">
+        <button type="button" data-mode="day">Day</button>
+        <button type="button" data-mode="week">Week</button>
+        <button type="button" data-mode="month">Month</button>
+        <button type="button" id="prev" aria-label="Previous period">←</button>
+        <button type="button" id="next" aria-label="Next period">→</button>
+        <button type="button" id="today">Today</button>
+        <input type="date" id="anchor" aria-label="Date in period" style="width:auto;color:#16202B">
+      </div>
+      <p id="rangeLabel" style="font-weight:600;margin-top:10px"></p>
+    </div>
+    <div class="ring" id="ring" aria-label="Readiness index"><span><div><b id="ringVal">—</b>Readiness</div></span></div>
+  </section>
+
+  <div id="sampleBanner" class="panel notice" hidden>
+    <div class="bar" style="justify-content:space-between">
+      <span id="sampleText" class="sub" style="color:var(--fg)"></span>
+      <button type="button" id="clearSample">Clear examples</button>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" class="tab" role="tab" data-tab="dash" aria-selected="true">Dashboard</button>
+    <button type="button" class="tab" role="tab" data-tab="act" aria-selected="false">Activity</button>
+    <button type="button" class="tab" role="tab" data-tab="risk" aria-selected="false">Risk matrix</button>
+    <button type="button" class="tab" role="tab" data-tab="legal" aria-selected="false">Legal register</button>
+    <button type="button" class="tab" role="tab" data-tab="certs" aria-selected="false">Certificates &amp; TPI</button>
+    <button type="button" class="tab" role="tab" data-tab="comp" aria-selected="false">Competence &amp; PTW</button>
+    <button type="button" class="tab" role="tab" data-tab="contr" aria-selected="false">Contractors</button>
+    <button type="button" class="tab" role="tab" data-tab="exp" aria-selected="false">Export</button>
+  </nav>
+
+  <!-- Dashboard -->
+  <section id="dash" data-pane class="wrap" style="gap:16px">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="panel">
+        <h2>Activity by type</h2>
+        <div id="bars"></div>
+      </div>
+      <div class="panel">
+        <h2>Smart flags</h2>
+        <ul class="insights" id="insights"></ul>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel" id="trendPanel">
+        <h2>Daily trend (safety entries)</h2>
+        <div class="trend" id="trend"></div>
+      </div>
+      <div class="panel">
+        <h2>Open corrective actions</h2>
+        <div class="tablewrap" id="openList"></div>
+      </div>
+    </div>
+    <p class="sub">LTIFR = lost-time injuries × 1,000,000 ÷ manhours. TRIR = recordable injuries × 200,000 ÷ manhours. Recordable = medical treatment, restricted work, lost time or fatality. Readiness = simple average of legal compliance, valid certificates, valid training and closed actions. It is a management indicator, not a statutory measure.</p>
+  </section>
+
+  <!-- Activity -->
+  <section id="act" data-pane class="wrap" style="gap:16px" hidden>
+    <div class="panel">
+      <h2>Log activity</h2>
+      <div data-form="logs"></div>
+    </div>
+    <div class="panel">
+      <h2>Entries in this period</h2>
+      <div data-table="logs"></div>
+    </div>
+  </section>
+
+  <!-- Risk -->
+  <section id="risk" data-pane class="grid2" hidden>
+    <div class="panel">
+      <h2>5 × 5 risk matrix (open items)</h2>
+      <div class="heat" id="heat"></div>
+      <p class="sub" style="margin-top:10px">Rows are likelihood (5 at top), columns are severity (1 to 5). Bands: 1–4 low, 5–9 medium, 10–16 high, 20–25 extreme.</p>
+    </div>
+    <div class="panel">
+      <h2>Highest-scoring open risks</h2>
+      <div class="tablewrap" id="topRisks"></div>
+    </div>
+  </section>
+
+  <!-- Legal -->
+  <section id="legal" data-pane class="wrap" style="gap:16px" hidden>
+    <div class="panel">
+      <h2>Legal register: status summary</h2>
+      <div class="kpis" id="legalKpis"></div>
+      <p class="sub" style="margin-top:12px">This is a starter list of Indian EHS requirements, not legal advice. Applicability, thresholds and current status depend on your sites and on the latest gazette and Maharashtra notifications. Confirm them with your legal or compliance adviser before you rely on any status.</p>
+    </div>
+    <div class="panel">
+      <h2>Add or update a requirement</h2>
+      <div data-form="legal"></div>
+    </div>
+    <div class="panel">
+      <h2>Register</h2>
+      <div data-table="legal"></div>
+    </div>
+  </section>
+
+  <!-- Certificates -->
+  <section id="certs" data-pane class="wrap" style="gap:16px" hidden>
+    <div class="panel">
+      <h2>Certificates, licences and TPI applications</h2>
+      <p class="sub">Use <b>Applied</b> while a third-party inspection or licence application is in progress. Once the certificate is issued, change it to <b>Certified</b> and add the expiry date. Status turns amber 30 days before expiry.</p>
+    </div>
+    <div class="panel">
+      <h2>Add certificate or application</h2>
+      <div data-form="certs"></div>
+    </div>
+    <div class="panel">
+      <h2>Register</h2>
+      <div data-table="certs"></div>
+    </div>
+  </section>
+
+  <!-- Competence & PTW -->
+  <section id="comp" data-pane class="wrap" style="gap:16px" hidden>
+    <div class="panel">
+      <h2>Competence records</h2>
+      <div data-form="training"></div>
+      <div data-table="training" style="margin-top:12px"></div>
+    </div>
+    <div class="panel">
+      <h2>Permit to work register</h2>
+      <div data-form="ptw"></div>
+      <div data-table="ptw" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- Contractors -->
+  <section id="contr" data-pane class="wrap" style="gap:16px" hidden>
+    <div class="panel">
+      <h2>Contractor prequalification</h2>
+      <p class="sub">Approved means at least 3 on the rating and all 5 documents verified. Restricted means a rating below 3.</p>
+    </div>
+    <div class="panel">
+      <h2>Add contractor</h2>
+      <div data-form="contractors"></div>
+    </div>
+    <div class="panel">
+      <h2>Contractor register</h2>
+      <div data-table="contractors"></div>
+    </div>
+  </section>
+
+  <!-- Export -->
+  <section id="exp" data-pane class="wrap" style="gap:16px" hidden>
+    <div class="panel">
+      <h2>Excel sheets</h2>
+      <p class="sub">Files can't be downloaded from this page. Choose a sheet, copy it, and paste into Excel (Ctrl+V or Cmd+V). Cells fill automatically.</p>
+      <div class="bar" style="margin:12px 0">
+        <select id="sheetSel" style="width:auto"></select>
+        <button type="button" class="primary" id="copySheet">Copy sheet</button>
+        <span id="sheetStatus" class="sub" role="status"></span>
+      </div>
+      <textarea id="sheetText" class="mono" readonly aria-label="Sheet text"></textarea>
+    </div>
+    <div class="panel">
+      <h2>Presentation for this period</h2>
+      <p class="sub">Eight slides are built from the selected period and the live registers. Copy them into PowerPoint or NotebookLM.</p>
+      <div class="bar" style="margin-top:12px">
+        <button type="button" class="primary" id="copySlides">Copy slides as text</button>
+        <span id="slideStatus" class="sub" role="status"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Backup and restore</h2>
+      <p class="sub">Phone storage can be lost when you clear browser data, change phones, or leave the app unused for a long time. Save a backup file regularly. Restoring replaces the data on this device.</p>
+      <div class="bar" style="margin-top:12px">
+        <button type="button" class="primary" id="exportBtn">Save backup file</button>
+        <button type="button" id="restoreBtn">Restore from file</button>
+        <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+      </div>
+      <p class="sub" id="backupStatus" role="status"></p>
+    </div>
+    <div class="slides" id="slideGrid"></div>
+  </section>
+</div>
+
+<script>
+/* ---------- helpers ---------- */
+const KEY = "ehs-activity-tracker-v2";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const iso = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const fmtD = d => d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+const today = () => iso(new Date());
+const daysTo = s => Math.round((parse(s) - parse(today())) / 864e5);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const num = v => Number(v) || 0;
+const fx = (v,d=2) => (v === null || v === undefined || Number.isNaN(v)) ? "—" : v.toFixed(d);
+const B = (t,c) => `<span class="b b-${c}">${esc(t)}</span>`;
+
+/* ---------- reference lists ---------- */
+const LOG_TYPES = ["Incident","Near miss","Unsafe act / condition","Inspection","Audit","Toolbox talk","Training","PTW","Emergency drill","Environmental","Manhours"];
+const ACTION_TYPES = ["Incident","Near miss","Unsafe act / condition","Inspection","Audit","Environmental"];
+const CLASSES = ["","First aid","Medical treatment","Restricted work","Lost time","Fatality","Property damage","Environmental release"];
+const RECORDABLE = ["Medical treatment","Restricted work","Lost time","Fatality"];
+const LTI = ["Lost time","Fatality"];
+const ROOT = ["","People","Equipment","Procedure","Environment","Management"];
+const CERT_CATS = ["Factory licence","Boiler / IBR","Lifting tackle & crane (TPI)","Electrical installation","Fire NOC","MPCB consent","Hazardous waste authorisation","Explosives / petroleum licence","Management system (ISO 45001)","Other"];
+const COMP = ["Working at height","Confined space entry","Permit issuer / receiver","Fire marshal","First aid","Crane / rigging signalman","Forklift operator","Electrical isolation (LOTO)","Hazardous chemical handling","Incident investigation"];
+const PERMITS = ["Hot work","Confined space","Working at height","Electrical isolation","Excavation","Lifting operation","General work"];
+
+/* ---------- form definitions ---------- */
+const FORMS = {
+  logs: [
+    {k:"date",l:"Date",t:"date",r:1},
+    {k:"type",l:"Activity",t:"sel",o:LOG_TYPES},
+    {k:"site",l:"Site / project",t:"txt"},
+    {k:"area",l:"Area / work front",t:"txt"},
+    {k:"classification",l:"Injury classification",t:"sel",o:CLASSES},
+    {k:"severity",l:"Severity 1–5",t:"num",min:1,max:5},
+    {k:"likelihood",l:"Likelihood 1–5",t:"num",min:1,max:5},
+    {k:"rootCause",l:"Root cause category",t:"sel",o:ROOT},
+    {k:"owner",l:"Action owner",t:"txt"},
+    {k:"due",l:"Action due date",t:"date"},
+    {k:"actionStatus",l:"Action status",t:"sel",o:["","Open","In progress","Closed"]},
+    {k:"manhours",l:"Manhours (Manhours type only)",t:"num",min:0},
+    {k:"desc",l:"Details and corrective action",t:"area",w:1}
+  ],
+  legal: [
+    {k:"act",l:"Act / rule",t:"txt",r:1},
+    {k:"requirement",l:"Requirement",t:"area",w:1},
+    {k:"applicable",l:"Applies to us",t:"sel",o:["Yes","No","Verify"]},
+    {k:"owner",l:"Owner",t:"txt"},
+    {k:"nextDue",l:"Next due date",t:"date"},
+    {k:"status",l:"Status",t:"sel",o:["Not assessed","Compliant","Partial","Non-compliant"]},
+    {k:"evidence",l:"Evidence reference",t:"txt"}
+  ],
+  certs: [
+    {k:"name",l:"Certificate / licence",t:"txt",r:1},
+    {k:"category",l:"Category",t:"sel",o:CERT_CATS},
+    {k:"stage",l:"Stage",t:"sel",o:["Certified","Applied"]},
+    {k:"site",l:"Site",t:"txt"},
+    {k:"agency",l:"Issuing or TPI agency",t:"txt"},
+    {k:"expiry",l:"Expiry date",t:"date"},
+    {k:"notes",l:"Notes (reference numbers are fine)",t:"area",w:1}
+  ],
+  training: [
+    {k:"person",l:"Person",t:"txt",r:1},
+    {k:"competency",l:"Competency",t:"sel",o:COMP},
+    {k:"provider",l:"Provider",t:"txt"},
+    {k:"issued",l:"Issued",t:"date"},
+    {k:"expiry",l:"Expiry date",t:"date"}
+  ],
+  ptw: [
+    {k:"date",l:"Date",t:"date",r:1},
+    {k:"site",l:"Site",t:"txt"},
+    {k:"permitType",l:"Permit type",t:"sel",o:PERMITS},
+    {k:"issuer",l:"Issuer",t:"txt"},
+    {k:"status",l:"Status",t:"sel",o:["Open","Closed"]},
+    {k:"verified",l:"Isolation and LOTO verified",t:"chk"},
+    {k:"desc",l:"Work scope and controls",t:"area",w:1}
+  ],
+  contractors: [
+    {k:"name",l:"Contractor",t:"txt",r:1},
+    {k:"scope",l:"Scope of work",t:"txt"},
+    {k:"rating",l:"Safety rating 1–5",t:"num",min:1,max:5},
+    {k:"docs",l:"Documents verified (of 5)",t:"num",min:0,max:5},
+    {k:"lastAudit",l:"Last safety audit",t:"date"},
+    {k:"notes",l:"Notes: insurance, licences, ESI/PF, training, safety plan",t:"area",w:1}
+  ]
+};
+
+/* ---------- status logic ---------- */
+function certStatus(c){
+  if(!c.expiry) return c.stage === "Applied" ? {k:"Applied", cls:"info"} : {k:"No expiry", cls:"warn"};
+  const d = daysTo(c.expiry);
+  return d < 0 ? {k:"Expired", cls:"bad"} : d <= 30 ? {k:`Due in ${d} d`, cls:"warn"} : {k:"Valid", cls:"ok"};
+}
+function expBadge(date, warnDays){
+  if(!date) return B("No date","info");
+  const d = daysTo(date);
+  return d < 0 ? B("Expired","bad") : d <= warnDays ? B(`Due in ${d} d`,"warn") : B("Valid","ok");
+}
+const expTxt = date => !date ? "No date" : (daysTo(date) < 0 ? "Expired" : "Valid");
+function riskScore(r){ return (r.severity && r.likelihood) ? r.severity * r.likelihood : null; }
+function band(s){
+  if(s === null) return {n:"—", c:"#E4EAE7"};
+  return s <= 4 ? {n:"Low", c:"#CFEBDD"} : s <= 9 ? {n:"Medium", c:"#FFE8A3"} : s <= 16 ? {n:"High", c:"#FFC98A"} : {n:"Extreme", c:"#F7A8A8"};
+}
+function riskBadge(r){ const s = riskScore(r); const b = band(s); return `<span class="b" style="background:${b.c}">${s===null?"—":s+" · "+b.n}</span>`; }
+function riskTxt(r){ const s = riskScore(r); return s===null ? "" : `${s} ${band(s).n}`; }
+function actBadge(r){
+  if(!r.actionStatus) return "";
+  if(r.actionStatus === "Closed") return B("Closed","ok");
+  if(r.due && daysTo(r.due) < 0) return B("Overdue","bad");
+  return B(r.actionStatus,"warn");
+}
+function statusBadge(s){ return B(s, s==="Compliant"?"ok":s==="Partial"?"warn":s==="Non-compliant"?"bad":"info"); }
+function conStatus(c){
+  if((c.rating ?? 0) < 3) return {k:"Restricted", cls:"bad"};
+  if((c.docs ?? 0) < 5) return {k:"Documents pending", cls:"warn"};
+  return {k:"Approved", cls:"ok"};
+}
+
+/* ---------- table columns (f = HTML, x = plain text for Excel) ---------- */
+const COLS = {
+  logs: [
+    {l:"Date",k:"date"}, {l:"Activity",k:"type"}, {l:"Site",k:"site"}, {l:"Classification",k:"classification"},
+    {l:"Risk",f:r=>riskBadge(r),x:r=>riskTxt(r)},
+    {l:"Action",f:r=>actBadge(r),x:r=>r.actionStatus||""},
+    {l:"Details",k:"desc"}
+  ],
+  legal: [
+    {l:"Act / rule",k:"act"}, {l:"Requirement",k:"requirement"}, {l:"Applies",k:"applicable"},
+    {l:"Owner",k:"owner"}, {l:"Next due",k:"nextDue"},
+    {l:"Status",f:r=>statusBadge(r.status),x:r=>r.status||""}, {l:"Evidence",k:"evidence"}
+  ],
+  certs: [
+    {l:"Certificate / licence",k:"name"}, {l:"Category",k:"category"}, {l:"Site",k:"site"},
+    {l:"Agency",k:"agency"}, {l:"Expiry",k:"expiry"},
+    {l:"Status",f:r=>{const c=certStatus(r);return B(c.k,c.cls);},x:r=>certStatus(r).k}
+  ],
+  training: [
+    {l:"Person",k:"person"}, {l:"Competency",k:"competency"}, {l:"Provider",k:"provider"}, {l:"Expiry",k:"expiry"},
+    {l:"Status",f:r=>expBadge(r.expiry,60),x:r=>expTxt(r.expiry)}
+  ],
+  ptw: [
+    {l:"Date",k:"date"}, {l:"Site",k:"site"}, {l:"Permit",k:"permitType"},
+    {l:"Isolation verified",f:r=>r.verified?B("Yes","ok"):B("No","bad"),x:r=>r.verified?"Yes":"No"},
+    {l:"Status",f:r=>r.status==="Open"?B("Open","warn"):B("Closed","ok"),x:r=>r.status||""}
+  ],
+  contractors: [
+    {l:"Contractor",k:"name"}, {l:"Scope",k:"scope"}, {l:"Rating",k:"rating"},
+    {l:"Docs verified",f:r=>`${r.docs??0}/5`,x:r=>`${r.docs??0}/5`},
+    {l:"Last audit",k:"lastAudit"},
+    {l:"Decision",f:r=>{const c=conStatus(r);return B(c.k,c.cls);},x:r=>conStatus(r).k}
+  ]
+};
+
+/* ---------- state and seed data ---------- */
+let state = {logs:[], certs:[], legal:[], training:[], ptw:[], contractors:[]};
+let mode = "month";
+let anchor = today();
+
+function legalTemplate(){
+  const L = (act, requirement, applicable="Verify") => ({id:uid(), act, requirement, applicable, owner:"", nextDue:null, status:"Not assessed", evidence:""});
+  return [
+    L("OSH & Working Conditions Code, 2020","Safety policy, safety committee, registers and annual returns under the Code and its central and state rules.","Yes"),
+    L("Factories Act, 1948 and Maharashtra Factories Rules","Factory licence and renewal, annual return, health, safety and welfare provisions, accident and dangerous-occurrence registers.","Yes"),
+    L("Maharashtra Factories (Safety Audit) Rules, 2014 (as amended 2024)","External safety audit by a recognised auditor for factories with 50 or more workers, on the cycle set by the rules.","Verify"),
+    L("Building and Other Construction Workers Act, 1996 and rules","Registration of the construction establishment, safety committee and site safety provisions for highway, pipeline and wind works.","Yes"),
+    L("Indian Boilers Act, 1923 and Regulations","Registration and periodic inspection of boilers and pressure vessels; competent-person requirements.","Verify"),
+    L("Factories Act, 1948: lifting machines and tackles","Periodic thorough examination of cranes, hoists and lifting tackle by a competent person; test certificates kept on site.","Yes"),
+    L("Electricity Act, 2003 and CEA Safety Regulations, 2010","Safe installations and supply, competent-person supervision, periodic inspection and records.","Yes"),
+    L("Environment (Protection) Act, 1986","Environmental compliance for site activities, including emissions and discharge limits.","Yes"),
+    L("Water and Air (Prevention and Control of Pollution) Acts, 1974 and 1981","Consent to establish and consent to operate from the Maharashtra Pollution Control Board; renew before expiry.","Yes"),
+    L("Hazardous and Other Wastes (Management and Transboundary Movement) Rules, 2016","Authorisation for generation, storage and disposal of hazardous waste; manifests and records.","Yes"),
+    L("Manufacture, Storage and Import of Hazardous Chemicals Rules, 1989","Applies where hazardous chemicals are stored or handled above notified thresholds; on-site and off-site emergency plans.","Verify"),
+    L("Explosives Act, 1884 and Explosives Rules, 2008","Licences for storage or use of explosives, where applicable.","Verify"),
+    L("Petroleum Act, 1934 and Gas Cylinder Rules, 2016","Licences for storage of petroleum products or LPG, where applicable.","Verify"),
+    L("Maharashtra Fire Prevention and Life Safety Measures Act, 2006","Fire NOC, fire safety audit and fire-fighting provisions for premises and sites.","Yes"),
+    L("Employees' Compensation Act, 1923","Employer liability and insurance cover for workers, including contractor workers.","Yes"),
+    L("Motor Vehicles Act, 1988","Vehicle fitness and driver licences for site vehicles and transport.","Yes")
+  ];
+}
+
+function sampleData(){
+  const base = parse(today());
+  const at = o => iso(addDays(base,-o));
+  const fut = n => iso(addDays(base,n));
+  const logs = [];
+  const L = (o,type,site,f={}) => logs.push({id:uid(),s:true,date:at(o),type,site,area:"",classification:"",severity:null,likelihood:null,rootCause:"",owner:"",due:null,actionStatus:"",manhours:null,desc:"",...f});
+  for(let o=0;o<21;o++){
+    if(addDays(base,-o).getDay() === 0) continue;
+    L(o,"Manhours","All sites",{manhours:360+((o*37)%95),desc:"Daily manhours"});
+  }
+  L(1,"Near miss","Wind Site A",{area:"Tower ladder",severity:3,likelihood:4,rootCause:"Equipment",owner:"Site supervisor",due:fut(3),actionStatus:"In progress",desc:"Loose bolt found on ladder platform. Torqued and tagged. Add torque check to pre-climb checklist."});
+  L(2,"Inspection","Highway Km 42",{area:"Level 2 scaffold",severity:3,likelihood:3,rootCause:"Procedure",owner:"Scaffold contractor",due:fut(-3),actionStatus:"Open",desc:"Missing toe board on level 2 scaffold. Scaffold tagged red."});
+  L(3,"Incident","CNG Pipeline Sec 3",{classification:"First aid",area:"Cutting bay",severity:1,likelihood:4,rootCause:"People",owner:"Supervisor",actionStatus:"Closed",desc:"Minor hand cut while cutting pipe. Dressed on site. Cut-resistant gloves issued."});
+  L(4,"Toolbox talk","Plant Yard",{desc:"Working at height and harness checks. 18 attended."});
+  L(5,"Unsafe act / condition","Wind Site A",{area:"Crane base",severity:2,likelihood:3,rootCause:"People",owner:"Crane supervisor",due:fut(2),actionStatus:"Open",desc:"Crane operator without hi-vis vest. Coached on site."});
+  L(8,"Training","Plant Yard",{desc:"Permit-to-work refresher. 14 attended."});
+  L(10,"Incident","Highway Km 42",{classification:"Property damage",area:"Barricade line",severity:3,likelihood:3,rootCause:"Procedure",owner:"Excavation lead",due:fut(-6),actionStatus:"Open",desc:"Excavator swing struck a barricade. No injuries. Swing-radius exclusion added."});
+  L(11,"Near miss","CNG Pipeline Sec 3",{area:"Walkway",severity:3,likelihood:4,rootCause:"Management",owner:"Site manager",due:fut(1),actionStatus:"Open",desc:"Hose left across walkway overnight. Walkway cleared and housekeeping check added."});
+  L(12,"Inspection","CNG Pipeline Sec 3",{area:"Trench",severity:4,likelihood:3,rootCause:"Procedure",owner:"Civil foreman",due:fut(-1),actionStatus:"In progress",desc:"Trench shoring not installed beyond 1.5 m depth. Work stopped until shoring installed."});
+  L(14,"Toolbox talk","Wind Site A",{desc:"Lifting plan review before crane mobilisation."});
+  L(15,"Audit","Plant Yard",{area:"Electrical panels",severity:2,likelihood:2,rootCause:"Equipment",owner:"Electrical in-charge",due:fut(10),actionStatus:"Open",desc:"Panel labels missing on two MCC panels."});
+  L(16,"Incident","Plant Yard",{classification:"Medical treatment",area:"Dust extraction",severity:3,likelihood:3,rootCause:"Equipment",owner:"Maintenance",due:fut(-2),actionStatus:"In progress",desc:"Eye injury from dust. Treated at clinic and returned with restrictions. Extraction hood repair pending."});
+  L(18,"Environmental","Highway Km 42",{area:"Batching area",severity:2,likelihood:2,rootCause:"Environment",owner:"Environment officer",due:fut(4),actionStatus:"Open",desc:"Oil drip tray found empty near generator. Spill kit topped up."});
+  L(19,"PTW","Wind Site A",{desc:"Hot work permit closed after fire watch."});
+
+  const C = (name,category,site,agency,stage,expiry) => ({id:uid(),s:true,name,category,stage,site,agency,expiry:expiry||null,notes:"Example record"});
+  const certs = [
+    C("Factory licence","Factory licence","Plant Yard","Example factory authority","Certified",fut(240)),
+    C("Tower crane test certificate","Lifting tackle & crane (TPI)","Wind Site A","Example TPI agency","Certified",fut(12)),
+    C("Pressure vessel IBR certificate","Boiler / IBR","Plant Yard","Example IBR inspector","Certified",fut(-5)),
+    C("Fire NOC","Fire NOC","Highway Km 42","Example fire authority","Applied",""),
+    C("MPCB consent to operate","MPCB consent","Plant Yard","Maharashtra Pollution Control Board","Certified",fut(400)),
+    C("Hazardous waste authorisation","Hazardous waste authorisation","Plant Yard","Maharashtra Pollution Control Board","Applied",""),
+    C("ISO 45001 certificate","Management system (ISO 45001)","Corporate","Example certification body","Certified",fut(700))
+  ];
+  const T = (person,competency,expiry) => ({id:uid(),s:true,person,competency,provider:"Example provider",issued:at(60),expiry});
+  const training = [
+    T("Worker 1","Working at height",fut(200)), T("Worker 2","Confined space entry",fut(20)),
+    T("Worker 3","Crane / rigging signalman",fut(-10)), T("Worker 4","First aid",fut(300)),
+    T("Worker 5","Fire marshal",fut(90)), T("Worker 6","Permit issuer / receiver",fut(365))
+  ];
+  const P = (o,site,permitType,issuer,status,verified) => ({id:uid(),s:true,date:at(o),site,permitType,issuer,status,verified,desc:"Example permit"});
+  const ptw = [
+    P(0,"Wind Site A","Working at height","Site supervisor","Open",true),
+    P(1,"Plant Yard","Hot work","Permit issuer","Closed",true),
+    P(2,"Highway Km 42","Excavation","Civil foreman","Open",false),
+    P(4,"CNG Pipeline Sec 3","Confined space","Permit issuer","Closed",true)
+  ];
+  const K = (name,scope,rating,docs,o) => ({id:uid(),s:true,name,scope,rating,docs,lastAudit:at(o),notes:"Example record"});
+  const contractors = [
+    K("Example crane contractor","Crane lifts",4,5,7),
+    K("Example civil contractor","Excavation and shoring",3,3,12),
+    K("Example scaffold contractor","Scaffolding",2,4,3)
+  ];
+  return {logs, certs, legal:legalTemplate(), training, ptw, contractors};
+}
+
+function load(){
+  let parsed = null;
+  try{ const raw = localStorage.getItem(KEY); if(raw) parsed = JSON.parse(raw); }catch(e){}
+  if(parsed && typeof parsed === "object"){
+    state = {logs:[],certs:[],legal:[],training:[],ptw:[],contractors:[], ...parsed};
+  } else {
+    state = sampleData();
+    persist();
+  }
+}
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ---------- periods ---------- */
+function range(){
+  const a = parse(anchor);
+  if(mode === "day") return {start:anchor, end:anchor, label:fmtD(a)};
+  if(mode === "week"){
+    const s = addDays(a, -((a.getDay()+6)%7)), e = addDays(s,6);
+    return {start:iso(s), end:iso(e), label:`Week: ${fmtD(s)} – ${fmtD(e)}`};
+  }
+  const s = new Date(a.getFullYear(), a.getMonth(), 1), e = new Date(a.getFullYear(), a.getMonth()+1, 0);
+  return {start:iso(s), end:iso(e), label:`Month: ${s.toLocaleDateString("en-IN",{month:"long",year:"numeric"})}`};
+}
+function shift(n){
+  const a = parse(anchor);
+  const d = mode==="day" ? addDays(a,n) : mode==="week" ? addDays(a,7*n) : new Date(a.getFullYear(), a.getMonth()+n, 1);
+  anchor = iso(d);
+  render();
+}
+
+/* ---------- metrics ---------- */
+function metrics(R){
+  const inP = r => r.date >= R.start && r.date <= R.end;
+  const L = state.logs.filter(inP);
+  const hours = L.filter(r=>r.type==="Manhours").reduce((a,r)=>a+num(r.manhours),0);
+  const inc = L.filter(r=>r.type==="Incident");
+  const rec = inc.filter(r=>RECORDABLE.includes(r.classification)).length;
+  const lti = inc.filter(r=>LTI.includes(r.classification)).length;
+  const nm = L.filter(r=>r.type==="Near miss").length;
+  const acts = state.logs.filter(r=>ACTION_TYPES.includes(r.type) && r.actionStatus);
+  const actOpen = acts.filter(r=>r.actionStatus !== "Closed");
+  const overdue = actOpen.filter(r=>r.due && daysTo(r.due) < 0);
+  const actPct = acts.length ? (acts.length-actOpen.length)/acts.length*100 : null;
+  const cs = state.certs.map(certStatus);
+  const certPct = cs.length ? cs.filter(c=>c.k==="Valid").length/cs.length*100 : null;
+  const expired = cs.filter(c=>c.k==="Expired").length;
+  const dueSoon = cs.filter(c=>c.k.startsWith("Due")).length;
+  const applicable = state.legal.filter(r=>r.applicable !== "No");
+  const legalOK = applicable.filter(r=>r.status==="Compliant").length;
+  const legalNC = applicable.filter(r=>r.status==="Non-compliant").length;
+  const legalAssessed = applicable.filter(r=>r.status !== "Not assessed").length;
+  const legalPct = applicable.length ? legalOK/applicable.length*100 : null;
+  const trValid = state.training.filter(t=>t.expiry && daysTo(t.expiry) >= 0).length;
+  const trPct = state.training.length ? trValid/state.training.length*100 : null;
+  const trExpired = state.training.filter(t=>t.expiry && daysTo(t.expiry) < 0).length;
+  const ptwR = state.ptw.filter(inP);
+  const ptwOpen = ptwR.filter(p=>p.status==="Open").length;
+  const ptwUnverified = ptwR.filter(p=>!p.verified).length;
+  const parts = [legalPct, certPct, trPct, actPct].filter(v=>v!==null);
+  return {
+    hours, rec, lti, nm, inc: inc.length, acts: acts.length, actOpen: actOpen.length, overdue: overdue.length,
+    actPct, certPct, expired, dueSoon, legalPct, legalOK, legalNC, legalAssessed, legalTotal: applicable.length,
+    trPct, trExpired, ptwOpen, ptwUnverified, ptwTotal: ptwR.length,
+    ltifr: hours ? lti*1e6/hours : null,
+    trir: hours ? rec*2e5/hours : null,
+    nmr: rec ? nm/rec : null,
+    inspections: L.filter(r=>r.type==="Inspection"||r.type==="Audit").length,
+    talks: L.filter(r=>r.type==="Toolbox talk").length,
+    readiness: parts.length ? Math.round(parts.reduce((a,b)=>a+b,0)/parts.length) : null,
+    L, ptwR
+  };
+}
+
+/* ---------- rendering ---------- */
+function rowsFor(key){
+  const R = range();
+  const inP = r => r.date >= R.start && r.date <= R.end;
+  if(key === "logs") return state.logs.filter(inP).sort((a,b)=>a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  if(key === "ptw") return state.ptw.filter(inP).sort((a,b)=>a.date < b.date ? 1 : -1);
+  if(key === "certs") return [...state.certs].sort((a,b)=>(a.expiry||"9999") < (b.expiry||"9999") ? -1 : 1);
+  if(key === "training") return [...state.training].sort((a,b)=>(a.expiry||"9999") < (b.expiry||"9999") ? -1 : 1);
+  return state[key];
+}
+
+function tableHTML(key, rows){
+  if(!rows.length) return `<p class="sub">Nothing recorded yet for this view.</p>`;
+  const cols = COLS[key];
+  return `<div class="tablewrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c.l)}</th>`).join("")}<th></th></tr></thead><tbody>${
+    rows.map(r => `<tr>${cols.map((c,i)=>`<td>${c.f ? c.f(r) : esc(r[c.k] ?? "")}${i===0 && r.s ? ' <span class="tag">Example</span>' : ""}</td>`).join("")}<td><button type="button" data-col="${key}" data-del="${esc(r.id)}" aria-label="Delete row">Delete</button></td></tr>`).join("")
+  }</tbody></table></div>`;
+}
+
+function formHTML(key){
+  const fields = FORMS[key].map(f => {
+    if(f.t === "chk") return `<label class="check wide"><input type="checkbox" name="${f.k}"> ${esc(f.l)}</label>`;
+    let c;
+    if(f.t === "sel") c = `<select name="${f.k}">${f.o.map(o=>`<option value="${esc(o)}">${esc(o||"—")}</option>`).join("")}</select>`;
+    else if(f.t === "area") c = `<textarea name="${f.k}" rows="3"></textarea>`;
+    else if(f.t === "num") c = `<input type="number" name="${f.k}" inputmode="numeric" step="1"${f.min!=null?` min="${f.min}"`:""}${f.max!=null?` max="${f.max}"`:""}>`;
+    else c = `<input type="${f.t==="date"?"date":"text"}" name="${f.k}"${f.r?" required":""}>`;
+    return `<label class="${f.w?"wide":""}">${esc(f.l)}${c}</label>`;
+  }).join("");
+  return `<form class="form" data-form="${key}" autocomplete="off">${fields}<div class="wide bar"><button type="submit" class="primary">Save</button><span class="sub" data-msg role="status"></span></div></form>`;
+}
+
+function render(){
+  const R = range();
+  const M = metrics(R);
+  $("#rangeLabel").textContent = R.label;
+  $$("[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+  $("#anchor").value = anchor;
+  const logDate = document.querySelector('[data-form="logs"] [name="date"]');
+  if(logDate && !logDate.value) logDate.value = anchor;
+
+  const ex = Object.values(state).flat().filter(r=>r.s).length;
+  $("#sampleBanner").hidden = ex === 0;
+  $("#sampleText").textContent = `${ex} example records show how each register works. Clear them before you enter real data.`;
+
+  $("#ringVal").textContent = M.readiness === null ? "—" : M.readiness + "%";
+  $("#ring").style.setProperty("--p", M.readiness ?? 0);
+
+  const kpis = [
+    ["LTIFR", fx(M.ltifr), `per 1M hrs · ${M.lti} LTI`, M.lti ? "bad" : ""],
+    ["TRIR", fx(M.trir), `per 200k hrs · ${M.rec} recordable`, M.rec ? "warn" : ""],
+    ["Near misses per recordable", fx(M.nmr,1), `${M.nm} near misses`, M.nmr!==null && M.nmr<3 ? "warn" : ""],
+    ["Manhours", M.hours ? M.hours.toLocaleString("en-IN") : "—", "logged in period", ""],
+    ["Inspections & audits", M.inspections, `${M.talks} toolbox talks`, ""],
+    ["Open actions", M.actOpen, `${M.overdue} overdue`, M.overdue ? "bad" : ""],
+    ["Certificates valid", M.certPct===null?"—":Math.round(M.certPct)+"%", `${M.expired} expired · ${M.dueSoon} due ≤30 d`, M.expired ? "bad" : M.dueSoon ? "warn" : ""],
+    ["Legal compliance", M.legalPct===null?"—":Math.round(M.legalPct)+"%", `${M.legalNC} non-compliant · ${M.legalAssessed}/${M.legalTotal} assessed`, M.legalNC ? "bad" : ""],
+    ["Training valid", M.trPct===null?"—":Math.round(M.trPct)+"%", `${M.trExpired} expired`, M.trExpired ? "bad" : ""],
+    ["PTW open", M.ptwOpen, `${M.ptwUnverified} without LOTO check`, M.ptwOpen ? "warn" : ""]
+  ];
+  $("#kpis").innerHTML = kpis.map(([k,v,s,c]) =>
+    `<div class="panel kpi ${c}"><b>${esc(v)}</b><span>${esc(k)}</span><small>${esc(s)}</small></div>`).join("");
+
+  const types = LOG_TYPES.filter(t=>t!=="Manhours");
+  const cnt = t => M.L.filter(r=>r.type===t).length;
+  const max = Math.max(1, ...types.map(cnt));
+  $("#bars").innerHTML = types.map(t =>
+    `<div class="hbar"><span>${esc(t)}</span><div class="track"><div class="fill" style="width:${cnt(t)/max*100}%"></div></div><span>${cnt(t)}</span></div>`).join("");
+
+  if(mode === "day"){ $("#trendPanel").hidden = true; }
+  else {
+    $("#trendPanel").hidden = false;
+    const days = [];
+    for(let d = parse(R.start), end = parse(R.end); d <= end; d = addDays(d,1)) days.push(iso(d));
+    const counts = days.map(k => M.L.filter(r=>r.date===k && r.type!=="Manhours").length);
+    const cmax = Math.max(1, ...counts);
+    $("#trend").innerHTML = days.map((k,i) =>
+      `<div title="${k}: ${counts[i]}"><i style="height:${counts[i]/cmax*100}%"></i><small>${parse(k).getDate()}</small></div>`).join("");
+  }
+
+  const flags = [];
+  if(M.lti) flags.push(["bad", `${M.lti} lost-time injur${M.lti>1?"ies":"y"} this period. Hold a root-cause review within 24 hours and check the same work front.`]);
+  if(M.overdue) flags.push(["bad", `${M.overdue} corrective action(s) are overdue. Escalate to owners before the next safety committee meeting.`]);
+  if(M.expired) flags.push(["bad", `${M.expired} certificate(s) expired. Block use of the affected equipment until a valid certificate is on file.`]);
+  if(M.legalNC) flags.push(["bad", `${M.legalNC} applicable legal requirement(s) are marked non-compliant. Assign owners and dates.`]);
+  if(M.trExpired) flags.push(["bad", `${M.trExpired} competence record(s) have expired. Keep those workers off tasks that need the competency.`]);
+  if(M.nmr!==null && M.nmr<3) flags.push(["warn", "Near-miss reporting is low relative to recordable injuries (under 3 per recordable). Check whether people feel safe reporting."]);
+  if(M.ptwOpen) flags.push(["warn", `${M.ptwOpen} permit(s) still open. Close them out with isolation and LOTO checks recorded.`]);
+  if(M.ptwUnverified) flags.push(["warn", `${M.ptwUnverified} permit(s) have no isolation or LOTO verification recorded.`]);
+  if(M.dueSoon) flags.push(["warn", `${M.dueSoon} certificate(s) fall due within 30 days. Start the TPI or renewal application now.`]);
+  if(M.legalTotal && M.legalAssessed/M.legalTotal < 0.5) flags.push(["warn", `Only ${M.legalAssessed} of ${M.legalTotal} applicable requirements have been assessed. Finish the legal register.`]);
+  if(M.talks===0 && M.L.length) flags.push(["info", "No toolbox talks logged in this period."]);
+  if(!flags.length) flags.push(["ok", "No critical flags in this period. Keep watching the trend."]);
+  $("#insights").innerHTML = flags.map(([c,t]) => `<li>${B(c==="ok"?"OK":c==="bad"?"Act":c==="warn"?"Watch":"Note", c)}<span>${esc(t)}</span></li>`).join("");
+
+  const open = state.logs.filter(r=>ACTION_TYPES.includes(r.type) && r.actionStatus && r.actionStatus!=="Closed");
+  $("#openList").innerHTML = open.length
+    ? `<table><thead><tr><th>Date</th><th>Type</th><th>Site</th><th>Due</th><th>Owner</th><th>Action</th></tr></thead><tbody>${
+        open.sort((a,b)=>(a.due||"9999")<(b.due||"9999")?-1:1).map(r =>
+          `<tr><td>${esc(r.date)}</td><td>${esc(r.type)}</td><td>${esc(r.site)}</td><td>${esc(r.due||"—")}</td><td>${esc(r.owner)}</td><td>${actBadge(r)}</td></tr>`).join("")
+      }</tbody></table>`
+    : `<p class="sub">No open corrective actions.</p>`;
+
+  const scored = state.logs.filter(r=>riskScore(r)!==null && r.actionStatus!=="Closed" && r.type!=="Manhours");
+  const heat = [];
+  heat.push(`<div></div>` + [1,2,3,4,5].map(s=>`<div style="text-align:center">S${s}</div>`).join(""));
+  for(let l=5; l>=1; l--){
+    heat.push(`<div style="display:grid;place-items:center;padding-right:6px">L${l}</div>`);
+    for(let s=1; s<=5; s++){
+      const n = scored.filter(r=>r.likelihood===l && r.severity===s).length;
+      heat.push(`<div class="cell" style="background:${band(l*s).c}" title="Likelihood ${l}, severity ${s}: ${n}">${n||""}</div>`);
+    }
+  }
+  $("#heat").innerHTML = heat.join("");
+  const top = [...scored].sort((a,b)=>riskScore(b)-riskScore(a)).slice(0,8);
+  $("#topRisks").innerHTML = top.length
+    ? `<table><thead><tr><th>Date</th><th>Site</th><th>Risk</th><th>Detail</th></tr></thead><tbody>${
+        top.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.site)}</td><td>${riskBadge(r)}</td><td>${esc(r.desc)}</td></tr>`).join("")
+      }</tbody></table>`
+    : `<p class="sub">No open scored risks. Add severity and likelihood to log entries to see them here.</p>`;
+
+  const counts = s => state.legal.filter(r=>r.applicable!=="No" && r.status===s).length;
+  $("#legalKpis").innerHTML = [
+    ["Compliant", counts("Compliant"), "ok"], ["Partial", counts("Partial"), "warn"],
+    ["Non-compliant", counts("Non-compliant"), "bad"], ["Not assessed", counts("Not assessed"), ""]
+  ].map(([k,v,c]) => `<div class="panel kpi ${c}"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
+
+  $$("[data-table]").forEach(el => { el.innerHTML = tableHTML(el.dataset.table, rowsFor(el.dataset.table)); });
+
+  const slides = buildSlides(R, M);
+  $("#slideGrid").innerHTML = slides.map((s,i) =>
+    `<article class="slide"><div class="slide-head"><small>${i+1} / ${slides.length}</small><h3>${esc(s.t)}</h3></div><ul>${s.b.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></article>`).join("");
+  slidesText = slides.map((s,i) => `Slide ${i+1}: ${s.t}\n` + s.b.map(x=>"- "+x).join("\n")).join("\n\n");
+  renderSheet();
+}
+
+/* ---------- slides ---------- */
+let slidesText = "";
+function buildSlides(R, M){
+  const topRisk = [...state.logs].filter(r=>riskScore(r)!==null && r.actionStatus!=="Closed" && r.type!=="Manhours")
+    .sort((a,b)=>riskScore(b)-riskScore(a)).slice(0,4)
+    .map(r=>`${riskScore(r)} ${band(riskScore(r)).n}: ${r.site} · ${r.desc.slice(0,80)}`);
+  const recs = [];
+  if(M.lti) recs.push("Complete root-cause review for lost-time injuries");
+  if(M.overdue) recs.push(`Clear ${M.overdue} overdue corrective action(s)`);
+  if(M.expired || M.dueSoon) recs.push("Renew or apply for expiring certificates and start TPI bookings");
+  if(M.legalNC || M.legalAssessed < M.legalTotal) recs.push("Finish legal register assessment and close non-compliances");
+  if(M.talks===0) recs.push("Schedule toolbox talks for every active work front");
+  if(!recs.length) recs.push("Maintain controls and monitor the leading indicators");
+  return [
+    {t:`EHS performance: ${R.label.replace(/^(Week|Month|Day): /,"")}`, b:[
+      `${M.L.length} activity records across ${new Set(M.L.map(r=>r.site)).size} site(s)`,
+      `${M.hours ? M.hours.toLocaleString("en-IN")+" manhours logged" : "No manhours logged"}`,
+      `Readiness index: ${M.readiness===null?"not yet available":M.readiness+"%"}`]},
+    {t:"Lagging indicators", b:[
+      `LTIFR: ${fx(M.ltifr)} per 1M hours (${M.lti} lost-time injuries)`,
+      `TRIR: ${fx(M.trir)} per 200,000 hours (${M.rec} recordable)`,
+      `Near misses per recordable: ${fx(M.nmr,1)}`]},
+    {t:"Leading indicators", b:[
+      `Near misses reported: ${M.nm}`, `Inspections and audits: ${M.inspections}`,
+      `Toolbox talks: ${M.talks}`, `PTW issued in period: ${M.ptwR.length} (${M.ptwOpen} still open)`]},
+    {t:"Corrective actions", b:[
+      `Open actions: ${M.actOpen} of ${M.acts} tracked`, `Overdue: ${M.overdue}`,
+      `Closure rate: ${M.actPct===null?"—":Math.round(M.actPct)+"%"}`]},
+    {t:"Legal and certification status", b:[
+      `Legal compliance: ${M.legalPct===null?"—":Math.round(M.legalPct)+"%"} of applicable requirements`,
+      `Requirements not yet assessed: ${M.legalTotal - M.legalAssessed}`,
+      `Certificates valid: ${M.certPct===null?"—":Math.round(M.certPct)+"%"} (${M.expired} expired, ${M.dueSoon} due within 30 days)`]},
+    {t:"Competence and contractors", b:[
+      `Training valid: ${M.trPct===null?"—":Math.round(M.trPct)+"%"} (${M.trExpired} expired)`,
+      `Contractors approved: ${state.contractors.filter(c=>conStatus(c).k==="Approved").length} of ${state.contractors.length}`,
+      `Contractors restricted: ${state.contractors.filter(c=>conStatus(c).k==="Restricted").length}`]},
+    {t:"Top open risks", b: topRisk.length ? topRisk : ["No open scored risks"]},
+    {t:"Focus for the next period", b: recs}
+  ];
+}
+
+/* ---------- Excel sheets ---------- */
+const SHEET_NAMES = ["Summary","Activity log","Legal register","Certificates","Training","PTW","Contractors"];
+function sheetRows(name){
+  const R = range();
+  const M = metrics(R);
+  const clean = v => String(v ?? "").replace(/[\t\r\n]+/g," ");
+  if(name === "Summary"){
+    return [["Metric","Value"],["Period",R.label.replace(/^(Week|Month|Day): /,"")],
+      ["LTIFR (per 1M hrs)",fx(M.ltifr)],["TRIR (per 200k hrs)",fx(M.trir)],
+      ["Lost-time injuries",M.lti],["Recordable injuries",M.rec],["Near misses",M.nm],
+      ["Near misses per recordable",fx(M.nmr,1)],["Manhours",M.hours],["Inspections and audits",M.inspections],
+      ["Toolbox talks",M.talks],["Open actions",M.actOpen],["Overdue actions",M.overdue],
+      ["Legal compliance %",fx(M.legalPct,0)],["Certificates valid %",fx(M.certPct,0)],
+      ["Training valid %",fx(M.trPct,0)],["Readiness index %",M.readiness ?? ""]];
+  }
+  const cols = COLS[name === "Activity log" ? "logs" : name === "Legal register" ? "legal" : name === "Certificates" ? "certs" : name === "Training" ? "training" : name === "PTW" ? "ptw" : "contractors"];
+  const rows = name === "Activity log" ? M.L : name === "PTW" ? M.ptwR : rowsFor(cols === COLS.logs ? "logs" : cols === COLS.legal ? "legal" : cols === COLS.certs ? "certs" : cols === COLS.training ? "training" : cols === COLS.ptw ? "ptw" : "contractors");
+  return [cols.map(c=>c.l), ...rows.map(r => cols.map(c => clean(c.x ? c.x(r) : (r[c.k] ?? ""))))];
+}
+function renderSheet(){
+  const name = $("#sheetSel").value || "Summary";
+  $("#sheetText").value = sheetRows(name).map(row => row.map(v => String(v ?? "").replace(/[\t\r\n]+/g," ")).join("\t")).join("\n");
+}
+
+async function copyText(txt, status, box){
+  try{
+    await navigator.clipboard.writeText(txt);
+    status.textContent = "Copied. Paste into Excel or PowerPoint.";
+  }catch(e){
+    if(box) box.select();
+    status.textContent = "Copy was blocked. The text is selected: press Ctrl+C (Cmd+C on Mac).";
+  }
+}
+
+/* ---------- boot ---------- */
+load();
+$$("[data-form]").forEach(el => { el.innerHTML = formHTML(el.dataset.form); });
+$$('[data-form]:not([data-form="logs"]) [name="date"]').forEach(el => { el.value = today(); });
+$("#sheetSel").innerHTML = SHEET_NAMES.map(n=>`<option>${esc(n)}</option>`).join("");
+render();
+
+/* ---------- events ---------- */
+$$("[data-mode]").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; render(); }));
+$("#prev").addEventListener("click", () => shift(-1));
+$("#next").addEventListener("click", () => shift(1));
+$("#today").addEventListener("click", () => { anchor = today(); render(); });
+$("#anchor").addEventListener("change", e => { if(e.target.value){ anchor = e.target.value; render(); } });
+
+$$("[data-tab]").forEach(b => b.addEventListener("click", () => {
+  $$("[data-tab]").forEach(x => x.setAttribute("aria-selected", String(x===b)));
+  $$("[data-pane]").forEach(p => { p.hidden = p.id !== b.dataset.tab; });
+}));
+
+document.addEventListener("submit", e => {
+  const form = e.target;
+  const key = form.dataset.form;
+  if(!key) return;
+  e.preventDefault();
+  const msg = form.querySelector("[data-msg]");
+  const row = {id: uid(), s: false};
+  for(const f of FORMS[key]){
+    const el = form.elements[f.k];
+    let v = f.t === "chk" ? el.checked : (el.value || "").trim();
+    if(f.t === "num") v = v === "" ? null : Number(v);
+    if(f.r && !v){ msg.textContent = `Fill in ${f.l.toLowerCase()}.`; return; }
+    if(f.t === "num" && v !== null && ((f.min!=null && v<f.min) || (f.max!=null && v>f.max))){
+      msg.textContent = `${f.l} must be between ${f.min} and ${f.max}.`; return;
+    }
+    row[f.k] = v === "" ? null : v;
+  }
+  if(key === "logs"){
+    if(row.type === "Manhours" && !row.manhours){ msg.textContent = "Enter the manhours worked that day."; return; }
+    if(!row.desc) row.desc = row.type;
+    if(row.type === "Manhours"){ row.severity = null; row.likelihood = null; }
+  }
+  state[key].push(row);
+  persist();
+  const keep = row.date || null;
+  form.reset();
+  if(keep && form.elements.date) form.elements.date.value = keep;
+  if(key !== "logs" && form.elements.date && !keep) form.elements.date.value = today();
+  msg.textContent = "Saved.";
+  render();
+});
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-del]");
+  if(!b) return;
+  const key = b.dataset.col;
+  state[key] = state[key].filter(r => r.id !== b.dataset.del);
+  persist();
+  render();
+});
+
+let armed = false, armTimer;
+$("#clearSample").addEventListener("click", e => {
+  const btn = e.currentTarget;
+  if(!armed){
+    armed = true;
+    btn.textContent = "Click again to clear";
+    clearTimeout(armTimer);
+    armTimer = setTimeout(() => { armed = false; btn.textContent = "Clear examples"; }, 4000);
+    return;
+  }
+  for(const k of Object.keys(state)) state[k] = state[k].filter(r => !r.s);
+  persist();
+  armed = false;
+  btn.textContent = "Clear examples";
+  render();
+});
+
+$("#sheetSel").addEventListener("change", renderSheet);
+$("#copySheet").addEventListener("click", () => copyText($("#sheetText").value, $("#sheetStatus"), $("#sheetText")));
+$("#copySlides").addEventListener("click", () => copyText(slidesText, $("#slideStatus"), null));
+
+/* ---------- backup and restore ---------- */
+$("#exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({app:"ehs-tracker", version:2, exported:new Date().toISOString(), data:state}, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ehs-backup-${today()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  $("#backupStatus").textContent = "Backup file created. Keep it somewhere safe, such as Google Drive or email to yourself.";
+});
+$("#restoreBtn").addEventListener("click", () => $("#restoreFile").click());
+$("#restoreFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const j = JSON.parse(await file.text());
+    if(!j || j.app !== "ehs-tracker" || !j.data) throw new Error("not a backup");
+    state = {logs:[], certs:[], legal:[], training:[], ptw:[], contractors:[], ...j.data};
+    persist();
+    render();
+    $("#backupStatus").textContent = "Backup restored.";
+  }catch(err){
+    $("#backupStatus").textContent = "Could not restore. This file is not a valid tracker backup.";
+  }
+  e.target.value = "";
+});
+
+/* ---------- offline support ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>
+
