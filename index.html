@@ -6,880 +6,982 @@
 <meta name="theme-color" content="#0F172A">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>EHS Management</title>
+<title>EHS Command</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
+:root{--bg:#F1F5F9;--card:#fff;--ink:#0F172A;--muted:#64748B;--line:#E2E8F0;--brand:#2563EB;--brand2:#1E3A8A;--navy:#0F172A;--ok:#059669;--okbg:#D1FAE5;--warn:#B45309;--warnbg:#FEF3C7;--bad:#DC2626;--badbg:#FEE2E2;--r:16px;--sh:0 1px 2px rgba(15,23,42,.06),0 4px 12px rgba(15,23,42,.06)}
 *{box-sizing:border-box}
-:root{
-  --bg:#F4F6FA; --card:#FFFFFF; --ink:#111827; --muted:#6B7280; --line:#E5E7EB; --field:#D1D5DB;
-  --brand:#1D4ED8; --brand-soft:#DBEAFE; --navy:#0F172A; --navy-2:#1E293B;
-  --ok:#047857; --ok-bg:#D1FAE5; --warn:#B45309; --warn-bg:#FEF3C7; --bad:#B91C1C; --bad-bg:#FEE2E2;
-  --radius:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
-}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);color-scheme:light;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
-h1,h2,h3{margin:0;line-height:1.25}
-h1{font-size:22px;font-weight:700}
-h2{font-size:16px;font-weight:700}
+input,select,textarea{width:100%;padding:12px 14px;border:1px solid #CBD5E1;border-radius:12px;background:#fff;outline:none}
+input[type=checkbox]{width:auto}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px #DBEAFE}
+label{display:block;font-size:13px;font-weight:700;color:#334155;margin:12px 0 6px}
+h1{font-size:22px;margin:0 0 2px;line-height:1.25}
+h2{font-size:16px;margin:0}
+a{color:var(--brand)}
+.hidden{display:none!important}
 .muted{color:var(--muted)}
 .small{font-size:13px}
-
-/* layout */
-.layout{min-height:100vh;display:grid;grid-template-columns:1fr}
-.side{display:none}
-.content{min-width:0;padding:16px 14px 110px}
-.bottom{position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
-.bottom a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:600}
-.bottom a.on{color:var(--brand)}
-.bottom a.on::before{content:"";width:26px;height:3px;border-radius:3px;background:var(--brand);margin-bottom:4px}
-@media (min-width:960px){
-  .layout{grid-template-columns:240px 1fr}
-  .side{display:flex;flex-direction:column;gap:6px;background:var(--navy);color:#CBD5E1;padding:22px 14px;position:sticky;top:0;height:100vh}
-  .bottom{display:none}
-  .content{padding:28px 36px 48px}
-}
-.brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:16px;padding:6px 10px 18px}
-.brand .logo{width:32px;height:32px;border-radius:9px;background:var(--brand);display:grid;place-items:center;font-weight:800}
-.side a{display:flex;align-items:center;padding:10px 12px;border-radius:10px;color:#CBD5E1;text-decoration:none;font-weight:600}
-.side a:hover{background:var(--navy-2);color:#fff}
-.side a.on{background:var(--brand);color:#fff}
-.side .who{margin-top:auto;border-top:1px solid #334155;padding:14px 10px 0}
-.side .who b{display:block;color:#fff}
-.side .who span{font-size:12px;color:#94A3B8}
-.side .who button{margin-top:12px;width:100%;background:transparent;border:1px solid #334155;color:#CBD5E1;border-radius:10px;padding:8px;cursor:pointer}
-
-.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-.topbar .sub{color:var(--muted);font-size:13px;margin-top:2px}
-.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.tools select{min-width:170px}
-.mobile-out{display:none}
-@media (max-width:959px){.mobile-out{display:inline-flex}}
-
-/* surfaces */
-.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;min-width:0}
-.stack{display:grid;gap:16px;min-width:0}
-.grid{display:grid;gap:16px;min-width:0;grid-template-columns:1fr}
-.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-@media (min-width:960px){
-  .grid.two{grid-template-columns:1fr 1fr}
-  .kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-  .fgrid .full{grid-column:1/-1}
-}
-.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;position:relative;overflow:hidden;min-width:0}
-.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand)}
-.kpi.warn::before{background:#F59E0B}
-.kpi.bad::before{background:var(--bad)}
-.kpi .label{font-size:13px;color:var(--muted);font-weight:600}
-.kpi .val{font-size:28px;font-weight:750;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.kpi .hint{font-size:12px;color:var(--muted);margin-top:2px}
-.sec-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
-.sec-head .muted{font-size:13px}
-
-/* buttons, chips, segmented */
-.btn{background:#fff;border:1px solid var(--field);border-radius:10px;padding:10px 14px;font-weight:600;color:var(--ink);min-height:42px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn:hover{background:#F9FAFB}
-.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-.btn.primary:hover{background:#1E40AF}
-.btn.sm{min-height:34px;padding:6px 11px;font-size:13px}
-.btn.ghost{background:transparent;border-color:transparent;color:var(--brand)}
-.btn.danger{color:var(--bad)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.grid{display:grid;gap:10px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:16px;min-width:0}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid #CBD5E1}
+.btn.ok{background:var(--ok)}
+.btn.bad{background:var(--bad)}
 .btn.block{width:100%}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch}
-.chip{border:1px solid var(--field);background:#fff;border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;color:var(--muted)}
-.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
-.seg{display:inline-flex;background:#EEF2F7;border-radius:11px;padding:4px;gap:4px;max-width:100%;overflow-x:auto}
-.seg button{border:0;background:transparent;padding:8px 13px;border-radius:8px;font-weight:600;color:var(--muted);min-height:36px;cursor:pointer;white-space:nowrap}
-.seg button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow)}
-.search{position:relative}
-.search input{width:100%;padding-left:14px}
-
-/* pills */
-.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap;background:#EEF2F7;color:#334155}
-.pill.ok{background:var(--ok-bg);color:var(--ok)}
-.pill.warn{background:var(--warn-bg);color:var(--warn)}
-.pill.bad{background:var(--bad-bg);color:var(--bad)}
-.pill.info{background:var(--brand-soft);color:#1E40AF}
-
-/* lists */
-.list{display:grid}
-.li{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--line);min-width:0}
-.li:first-child{border-top:0;padding-top:4px}
-.li>div:first-child{min-width:0;overflow-wrap:anywhere;flex:1}
-.li .meta{font-size:13px;color:var(--muted);margin-top:3px}
-.li.over{box-shadow:inset 3px 0 0 var(--bad);padding-left:12px;border-radius:4px}
-.right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.empty{text-align:center;color:var(--muted);padding:28px 8px}
-
-/* bars */
-.bars{display:flex;align-items:flex-end;gap:10px;height:190px;padding-top:6px}
-.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-.bar i{display:block;width:100%;max-width:44px;background:var(--brand);border-radius:8px 8px 4px 4px;min-height:4px}
-.bar b{font-size:12px;margin-bottom:4px;font-variant-numeric:tabular-nums}
-.bar small{font-size:11px;color:var(--muted);margin-top:6px;white-space:nowrap}
-
-/* forms */
-label{display:grid;gap:6px;font-size:13px;color:var(--muted);font-weight:600;margin-bottom:14px;min-width:0}
-label.check{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:500}
-input,select,textarea{border:1px solid var(--field);border-radius:10px;padding:11px 12px;background:#fff;color:var(--ink);width:100%;min-width:0;font-weight:400}
-input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--brand)}
-input:focus,select:focus,textarea:focus{outline:3px solid #BFD3FF;outline-offset:0;border-color:var(--brand)}
-input[type=search]{padding-left:14px}
-fieldset{border:1px dashed var(--field);border-radius:12px;padding:14px;margin:0 0 14px}
-legend{font-size:13px;color:var(--muted);font-weight:600;padding:0 6px}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-
-/* checklist items */
-.qi{border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;background:#fff}
-.qi.crit{border-left:4px solid var(--bad)}
-.qi .qt{font-weight:600}
-.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.seg3 label{display:block;margin:0;position:relative}
-.seg3 input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
-.seg3 span{display:block;text-align:center;border:1px solid var(--field);border-radius:10px;padding:10px 6px;font-weight:700;color:var(--muted);cursor:pointer;background:#fff}
-.seg3 input:checked+span{color:#fff;border-color:transparent}
-.seg3 label:nth-child(1) input:checked+span{background:var(--ok)}
-.seg3 label:nth-child(2) input:checked+span{background:var(--bad)}
-.seg3 label:nth-child(3) input:checked+span{background:#64748B}
-.seg3 input:focus-visible+span{outline:3px solid #BFD3FF}
-
-/* login */
-.login-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(180deg,var(--navy) 0 38%,var(--bg) 38%)}
-.login{width:100%;max-width:400px;background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(15,23,42,.15);padding:26px}
-.login .brand-lg{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:6px}
-.login .brand-lg .logo{width:36px;height:36px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center}
-
-.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,160%);background:var(--navy);color:#fff;padding:11px 16px;border-radius:12px;opacity:0;transition:transform .25s,opacity .25s;max-width:92%;font-size:14px;z-index:30;box-shadow:0 8px 24px rgba(15,23,42,.25)}
-.toast.show{transform:translate(-50%,0);opacity:1}
-.toast.ok{background:var(--ok)}
-.toast.bad{background:var(--bad)}
-@media (min-width:960px){.toast{bottom:28px}}
-.err{color:var(--bad)}
-@media (prefers-reduced-motion:reduce){.toast{transition:none}}
-:focus-visible{outline:3px solid #BFD3FF;outline-offset:2px}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
+.btn[disabled]{opacity:.5;cursor:default}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#E2E8F0;color:#334155;white-space:nowrap}
+.chip.ok{background:var(--okbg);color:#047857}
+.chip.warn{background:var(--warnbg);color:var(--warn)}
+.chip.bad{background:var(--badbg);color:var(--bad)}
+.chip.blue{background:#DBEAFE;color:#1D4ED8}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:700px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:16px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;min-height:116px;border:2px solid transparent}
+.tile:active{border-color:var(--brand)}
+.tile .ic{font-size:28px;width:54px;height:54px;border-radius:15px;display:grid;place-items:center;background:#EFF6FF}
+.tile b{font-size:15px}
+.tile small{color:var(--muted);font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:800px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--sh)}
+.kpi .v{font-size:24px;font-weight:800;margin-top:4px}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:700}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg a{flex:1;min-width:110px;text-align:center;padding:11px 10px;border-radius:12px;background:#F1F5F9;text-decoration:none;color:#334155;font-weight:700;font-size:14px}
+.seg a.on{background:#EFF6FF;color:var(--brand2);box-shadow:inset 0 0 0 2px var(--brand)}
+.sec{margin:20px 0 10px;font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}
+.list>*+*{margin-top:10px}
+.item{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh);border-left:5px solid #CBD5E1}
+.item.hi{border-left-color:var(--bad)}
+.item.md{border-left-color:#F59E0B}
+.item.lo{border-left-color:var(--ok)}
+.item.blue{border-left-color:var(--brand)}
+.empty{text-align:center;padding:28px 10px;color:var(--muted)}
+.empty .ic{font-size:42px}
+.shield{background:#EFF6FF;font-size:14px;margin-bottom:14px}
+.bar{height:12px;border-radius:99px;background:#E2E8F0;overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,#60A5FA,#2563EB)}
+.bar.bad>i{background:linear-gradient(90deg,#FCA5A5,#DC2626)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+.pf{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.pf button{padding:12px 6px;border-radius:12px;border:2px solid #E2E8F0;background:#fff;font-weight:700;cursor:pointer}
+.pf button.p{color:#166534}
+.pf button.f{color:#991B1B}
+.pf button.n{color:#334155}
+.pf button.p.on{background:#DCFCE7;border-color:#16A34A}
+.pf button.f.on{background:#FEE2E2;border-color:#DC2626}
+.pf button.n.on{background:#F1F5F9;border-color:#64748B}
+.check-row{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--sh);margin-bottom:10px}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:60;max-width:92vw;font-weight:600;text-align:center}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(160deg,#0F172A,#1E3A8A)}
+.login .card{width:100%;max-width:380px}
+.badge{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,#2563EB,#7C3AED);display:grid;place-items:center;font-size:34px;margin:0 auto 10px}
+/* layout */
+.app{min-height:100vh}
+.side{display:none}
+.main{padding:16px 14px 110px;min-width:0}
+.top{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.top select{width:auto;min-width:170px;padding:9px 12px;border-radius:12px}
+.nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px);z-index:30}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 0 8px;text-decoration:none;color:var(--muted);font-size:11px;font-weight:700}
+.nav a .ic{font-size:21px}
+.nav a.on{color:var(--brand)}
+.nav a.on .ic{transform:scale(1.12)}
+@media(min-width:960px){
+  .app{display:grid;grid-template-columns:250px 1fr}
+  .side{display:flex;flex-direction:column;gap:4px;background:var(--navy);color:#CBD5E1;padding:20px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+  .side a{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:12px;color:#CBD5E1;text-decoration:none;font-weight:600}
+  .side a:hover{background:#1E293B;color:#fff}
+  .side a.on{background:var(--brand);color:#fff}
+  .side .ic{font-size:18px;width:24px;text-align:center}
+  .nav{display:none}
+  .main{padding:26px 34px 40px}
+}
+.brand{display:flex;gap:10px;align-items:center;color:#fff;font-weight:800;padding:6px 8px 18px}
+.brand .logo{font-size:28px}
+.brand small{display:block;font-weight:500;color:#94A3B8;font-size:12px}
+.who{margin-top:auto;border-top:1px solid #334155;padding:14px 8px 0;color:#CBD5E1;font-size:13px}
+.who b{display:block;color:#fff}
+.who button{margin-top:10px;width:100%;background:transparent;border:1px solid #334155;color:#CBD5E1;border-radius:10px;padding:8px;cursor:pointer}
 </style>
 </head>
 <body>
-<div id="root"><div class="empty">Loading…</div></div>
+
+<div id="boot" class="login"><div class="card" style="text-align:center"><div class="badge">🦺</div><h2>Loading…</h2></div></div>
+
+<div id="login" class="login hidden">
+  <form class="card" id="lf">
+    <div class="badge">🦺</div>
+    <h1 style="text-align:center">EHS Command</h1>
+    <p class="muted small" style="text-align:center;margin:0 0 6px">One platform for the whole HSE team</p>
+    <label>📧 Email</label>
+    <input id="le" type="email" autocomplete="username" required>
+    <label>🔒 Password</label>
+    <input id="lp" type="password" autocomplete="current-password" required>
+    <button class="btn block" style="margin-top:18px">Sign in →</button>
+    <p class="small" style="text-align:center"><button type="button" class="btn ghost sm" id="forgot">Forgot password?</button></p>
+    <p class="small muted" id="lmsg"></p>
+  </form>
+</div>
+
+<div id="app" class="app hidden">
+  <aside class="side" id="side"></aside>
+  <div><main class="main" id="main"></main></div>
+  <nav class="nav" id="bottomnav"></nav>
+</div>
 
 <script>
-/* ============ CONFIG: paste your Supabase values here (see setup guide) ============ */
+/* ===================== SETTINGS (change here when needed) ===================== */
 const CONFIG = {
   url: "https://caygfknyxprkycyzbnhi.supabase.co",
-  key: "sb_publishable_s2s8S_cALkToUQdWBtCKyg_L9JOvMpp"
+  key: "sb_publishable_s2s8S_cALkToUQdWBtCKyg_L9JOvMpp",
+  bucket: "ehs-documents",
+  project: "EPC Project · HSE"
 };
 
-const { createClient } = supabase;
-const sb = CONFIG.url.startsWith("PASTE") ? null : createClient(CONFIG.url, CONFIG.key);
-
-/* ============ CONSTANTS ============ */
-const EVENT_TYPES = [["incident","Incident"],["near_miss","Near miss"],["unsafe_condition","Unsafe condition"]];
-const EVENT_CLS = {incident:"bad", near_miss:"warn", unsafe_condition:"info"};
-const CLASSES = ["First aid","Medical treatment","Restricted work","Lost time","Fatality","Property damage","Environmental release"];
-const RECORDABLE = ["Medical treatment","Restricted work","Lost time","Fatality"];
-const ROOT = ["","People","Equipment","Procedure","Environment","Management"];
-const COMPETENCIES = ["Working at height","Confined space entry","Permit issuer / receiver","Fire marshal","First aid","Crane / rigging signalman","Forklift operator","Electrical isolation (LOTO)","Hazardous chemical handling","Incident investigation"];
-const DOC_CATS = ["HSE plan","Procedure","Method statement","Risk assessment","Permit form","Checklist","Legal / licence","Training material","Other"];
-const DOC_STATUS = ["Draft","In review","Approved","Obsolete"];
-const ROLE_NAMES = {admin:"HSE head", hse_officer:"HSE officer", viewer:"Viewer (read only)", contractor:"Contractor"};
-const NAV = [
-  ["dashboard","Dashboard","Overview of safety performance"],
-  ["report","Report","Log events, manhours and training"],
-  ["inspect","Inspections","Checklists for every area"],
-  ["actions","Actions","Corrective actions and owners"],
-  ["documents","Documents","Controlled documents and acknowledgements"]
+/* ===================== ROLES AND PERMISSIONS =====================
+   The database enforces these rules too. This list only decides what buttons and pages each person sees. */
+const ROLES = {
+  admin:      {label:"System admin", ic:"🛠️"},
+  md:         {label:"MD", ic:"👑"},
+  gm:         {label:"GM", ic:"🏢"},
+  hod:        {label:"HOD", ic:"🏛️"},
+  hse_head:   {label:"HSE Head", ic:"🛡️"},
+  manager:    {label:"Manager", ic:"📈"},
+  supervisor: {label:"Supervisor", ic:"👷"},
+  officer:    {label:"HSE Officer", ic:"🦺"},
+  viewer:     {label:"Viewer", ic:"👀"},
+  contractor: {label:"Contractor", ic:"🧰"}
+};
+const CAN = {
+  enter:       ["admin","hse_head","supervisor","officer"],
+  approve:     ["admin","md","gm","hod","hse_head","manager"],
+  upload:      ["admin","hse_head","manager"],
+  admin:       ["admin"],
+  projectWide: ["admin","md","gm","hod","hse_head","manager","viewer"]
+};
+const ENTRY_TYPES = [
+  {id:"incident",         ic:"🚨", t:"Incident",         d:"Injury, damage or spill"},
+  {id:"near_miss",        ic:"🟡", t:"Near miss",        d:"Could have hurt someone"},
+  {id:"unsafe_condition", ic:"⚠️", t:"Unsafe condition", d:"Hazard seen on site"}
 ];
+const CLASSES = ["First aid","Medical treatment","Restricted work","Lost time","Fatality","Property damage","Environmental release"];
+const CLASS_IC = {"First aid":"🩹","Medical treatment":"🏥","Restricted work":"🛌","Lost time":"⛔","Fatality":"🕯️","Property damage":"🔧","Environmental release":"🌫️"};
+const catIc = c => ({"Daily":"☀️","Permit to Work":"📝","PPE":"🦺","Height":"🪜","Lifting":"🏗️","Scaffolding":"🧱","Excavation":"⛏️","Electrical":"⚡","Fire":"🔥","Housekeeping":"🧹","Vehicle":"🚚","First Aid":"🩹","Environment":"🌿","Chemicals":"🧪","Training":"🎤","Audit":"🔎"})[c] || "📋";
 
-/* ============ STATE ============ */
-const root = document.getElementById("root");
-let me = null, sitesList = [], templatesList = [];
-let siteFilter = "";            // "" = all sites
-let view = "dashboard";
-let reportKind = "event";
-let inspectCat = "All", inspectQ = "", activeTpl = null;
-let actFilter = "open";
-let docUploadOpen = false;
-let ackSet = new Set();
-
-/* ============ HELPERS ============ */
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const ymd = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-const todayStr = () => ymd(new Date());
-const plusDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
-const monthStart = (o = 0) => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + o, 1)); };
-const monthLabel = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { month: "short" });
-const daysUntil = (s) => Math.round((new Date(s + "T00:00:00") - new Date(todayStr() + "T00:00:00")) / 864e5);
-const nowLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
-const fx = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? "—" : Number(v).toFixed(d);
-const siteName = (id) => (sitesList.find(s => s.id === id) || {}).name || "—";
-const isAdmin = () => me && me.role === "admin";
-const canWrite = () => me && (me.role === "admin" || me.role === "hse_officer");
-const initials = (n) => (n || "?").split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
-
-function toast(msg, ok = true) {
-  const t = $("#toast");
-  if (!t) return;
-  t.textContent = msg;
-  t.className = "toast show " + (ok ? "ok" : "bad");
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { t.className = "toast"; }, 3800);
+/* ===================== HELPERS ===================== */
+const sb = supabase.createClient(CONFIG.url, CONFIG.key);
+const S = {user:null, profile:null, sites:[], site:"all", route:"home", arg:"", last:null, range:null, tpl:null};
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const localISO = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const addDays = n => localISO(new Date(Date.now() + n*864e5));
+const fd = d => d ? new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "–";
+const ft = d => d ? new Date(d).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "–";
+const fmtN = n => Number(n||0).toLocaleString("en-IN");
+const first = n => (n||"there").split(/[ @]/)[0];
+const role = () => S.profile?.role || "viewer";
+const can = k => CAN[k].includes(role());
+const pw = () => CAN.projectWide.includes(role());
+const sf = (q, col="site_id") => (S.site === "all" ? q : q.eq(col, S.site));
+const fdata = f => Object.fromEntries(new FormData(f));
+const nowLocal = () => localISO() + "T" + new Date().toTimeString().slice(0,5);
+const greet = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
+const roleChip = r => `<span class="chip blue">${ROLES[r]?.ic || ""} ${esc(ROLES[r]?.label || r || "")}</span>`;
+const kpi = (ic, v, l) => `<div class="kpi"><div style="font-size:22px">${ic}</div><div class="v">${v}</div><div class="l">${l}</div></div>`;
+const empty = (ic, msg) => `<div class="empty card"><div class="ic">${ic}</div>${msg}</div>`;
+const exportBtn = () => `<button class="btn ghost sm" data-act="export">⬇️ Export to Excel (CSV)</button>`;
+function toast(msg){ const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2800); }
+function err(e){ const m = e?.message || e; toast("⚠️ " + m); console.error(e); }
+async function run(p){ const r = await p; if (r.error) throw r.error; return r.data; }
+function audit(action, table, id){ sb.from("audit_log").insert({action, table_name: table, record_id: String(id || "")}).then(() => {}); }
+const denied = () => { $("#main").innerHTML = header("🔒 Not for your role") + empty("🔒", 'Your role does not have access to this page.<br><a href="#home">Go to Home</a>'); };
+function header(title, sub = "", right = ""){
+  return `<div class="top"><div><h1>${title}</h1><div class="muted small">${sub}</div></div><div class="row" style="justify-content:flex-end">${right}${siteSelect()}</div></div>`;
+}
+function siteSelect(){
+  return `<select id="siteSel" aria-label="Area">${pw() ? '<option value="all">🏗️ All areas</option>' : ''}${S.sites.map(s => `<option value="${s.id}" ${S.site === s.id ? "selected" : ""}>📍 ${esc(s.name)}</option>`).join("")}</select>`;
+}
+function siteField(name = "site_id"){
+  return `<select name="${name}" required>${S.sites.map(s => `<option value="${s.id}" ${S.site === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
+}
+function shield(){
+  const name = S.site === "all" ? "All areas" : (S.sites.find(s => s.id === S.site)?.name || "");
+  return pw()
+    ? `<div class="card shield">🔒 Showing <b>${esc(name)}</b> · your role sees all areas</div>`
+    : `<div class="card shield">🔒 Showing <b>${esc(name)}</b> · your role sees your own area. <a href="#access">Request access</a> to see others.</div>`;
+}
+function agg(rows){
+  const t = {hours:0, recordable:0, lti:0, near:0};
+  rows.forEach(r => { t.hours += +r.hours || 0; t.recordable += +r.recordable || 0; t.lti += +r.lti || 0; t.near += +r.near_miss || 0; });
+  t.ltifr = t.hours ? t.lti * 1e6 / t.hours : 0;
+  t.trir = t.hours ? t.recordable * 2e5 / t.hours : 0;
+  return t;
+}
+function expItem(title, sub, expiry, site){
+  const dd = expiry ? Math.ceil((new Date(expiry) - new Date(localISO())) / 864e5) : null;
+  const chip = dd === null ? '<span class="chip">No expiry</span>' : dd < 0 ? '<span class="chip bad">❌ Expired</span>' : dd <= 60 ? `<span class="chip warn">⚠️ ${dd} days left</span>` : '<span class="chip ok">✅ Valid</span>';
+  const cls = dd === null ? "" : dd < 0 ? "hi" : dd <= 60 ? "md" : "lo";
+  return `<div class="item ${cls}"><div class="row"><b>${esc(title)}</b>${chip}</div><div class="small muted" style="margin-top:6px">${esc(sub || "")} · 📍 ${esc(site || "")} · exp ${fd(expiry)}</div></div>`;
+}
+function docChip(s){ return `<span class="chip ${s === "Approved" ? "ok" : s === "Obsolete" ? "bad" : s === "In review" ? "warn" : ""}">${esc(s)}</span>`; }
+function statusChip(r){
+  if (r.status === "pending") return '<span class="chip warn">⏳ Pending</span>';
+  if (r.status === "rejected") return '<span class="chip bad">❌ Rejected</span>';
+  if (r.expires_at && new Date(r.expires_at) > new Date()) return `<span class="chip ok">✅ Until ${fd(r.expires_at)}</span>`;
+  return '<span class="chip">⌛ Expired</span>';
+}
+function exportCSV(name, rows, cols){
+  const lines = [cols.map(c => c[0]).join(",")].concat(rows.map(r => cols.map(c => {
+    const v = typeof c[1] === "function" ? c[1](r) : r[c[1]];
+    return '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  }).join(",")));
+  const blob = new Blob(["﻿" + lines.join("\n")], {type: "text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name + "-" + localISO() + ".csv";
+  a.click();
+  audit("export", name, rows.length);
 }
 
-function visibleNav() {
-  const r = me.role;
-  if (r === "contractor") return NAV.filter(([k]) => k === "documents");
-  if (r === "viewer") return NAV.filter(([k]) => ["dashboard","actions","documents"].includes(k));
-  return NAV;
+/* ===================== NAVIGATION ===================== */
+function items(){
+  return [
+    {id:"home",        ic:"🏠", t:"Home"},
+    {id:"enter",       ic:"➕", t:"Enter data",     ok: can("enter")},
+    {id:"actions",     ic:"✅", t:"Actions"},
+    {id:"inspections", ic:"📋", t:"Inspections"},
+    {id:"reports",     ic:"📊", t:"Reports"},
+    {id:"approvals",   ic:"🔑", t:"Approvals",      ok: can("approve")},
+    {id:"docs",        ic:"📁", t:"Documents"},
+    {id:"training",    ic:"🎓", t:"Training & certs"},
+    {id:"access",      ic:"🔓", t:"Request access"},
+    {id:"admin",       ic:"🛠️", t:"Admin",          ok: can("admin")}
+  ].filter(i => i.ok !== false);
 }
-
-function siteOptions(selected = "") {
-  const list = me.role === "hse_officer" ? sitesList.filter(s => s.id === me.site_id) : sitesList;
-  return list.map(s => `<option value="${s.id}" ${s.id === selected ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+function bottom(){
+  return [
+    {id:"home", ic:"🏠", t:"Home"},
+    can("enter") ? {id:"enter", ic:"➕", t:"Enter"} : {id:"actions", ic:"✅", t:"Actions"},
+    {id:"reports", ic:"📊", t:"Reports"},
+    can("approve") ? {id:"approvals", ic:"🔑", t:"Approve"} : {id:"docs", ic:"📁", t:"Docs"},
+    {id:"more", ic:"☰", t:"More"}
+  ];
 }
-
-function siteField() {
-  if (me.role === "hse_officer") {
-    return `<input type="hidden" name="site_id" value="${me.site_id || ""}">`;
-  }
-  return `<label>Site<select name="site_id" required><option value="">Choose site</option>${siteOptions(siteFilter)}</select></label>`;
+function buildNav(){
+  $("#side").innerHTML = `<div class="brand"><span class="logo">🦺</span><div>EHS Command<small>${esc(CONFIG.project)}</small></div></div>`
+    + items().map(i => `<a href="#${i.id}" data-r="${i.id}"><span class="ic">${i.ic}</span>${i.t}</a>`).join("")
+    + `<div class="who"><b>${esc(S.profile.full_name || "")}</b>${ROLES[role()]?.label || role()}<button type="button" data-act="signout">🚪 Sign out</button></div>`;
+  $("#bottomnav").innerHTML = bottom().map(i => `<a href="#${i.id}" data-r="${i.id}"><span class="ic">${i.ic}</span>${i.t}</a>`).join("");
 }
+function highlight(){ document.querySelectorAll("[data-r]").forEach(a => a.classList.toggle("on", a.dataset.r === S.route)); }
 
-/* ============ BOOT AND LOGIN ============ */
-function boot() {
-  if (!sb) {
-    root.innerHTML = `<div class="login-wrap"><div class="login"><h2>Setup needed</h2>
-      <p class="muted">Paste your Supabase Project URL and anon key into the CONFIG section of index.html. The setup guide shows where to find them.</p></div></div>`;
-    return;
-  }
-  sb.auth.onAuthStateChange((event) => {
-    if (event === "SIGNED_OUT") renderLogin();
-    if (event === "SIGNED_IN") loadApp();
-  });
-  sb.auth.getSession().then(({ data }) => (data.session ? loadApp() : renderLogin()));
+const PAGES = {};
+async function route(){
+  if (!S.user) return;
+  const h = (location.hash || "#home").slice(1);
+  const i = h.indexOf("/");
+  S.route = i < 0 ? h : h.slice(0, i);
+  S.arg = i < 0 ? "" : h.slice(i + 1);
+  highlight();
+  const page = PAGES[S.route] || PAGES.home;
+  $("#main").innerHTML = '<div class="empty"><div class="ic">⏳</div>Loading…</div>';
+  try { await page(S.arg); }
+  catch (e) { err(e); $("#main").innerHTML = header("⚠️ Could not load this page") + `<div class="card small">${esc(e.message || e)}<br><br>If this is a new feature, the database update may not be run yet.</div>`; }
+  window.scrollTo(0, 0);
 }
+window.addEventListener("hashchange", route);
 
-function renderLogin(msg = "") {
-  root.innerHTML = `<div class="login-wrap"><form id="loginForm" class="login">
-    <div class="brand-lg"><span class="logo">E</span> EHS Management</div>
-    <p class="muted small" style="margin:0 0 18px">Sign in with the email and password your HSE head gave you.</p>
-    <label>Email<input type="email" name="email" required autocomplete="username"></label>
-    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
-    <button class="btn primary block" type="submit">Sign in</button>
-    <p class="err small" role="alert" style="margin:12px 0 0">${esc(msg)}</p>
-  </form></div>`;
-  $("#loginForm").onsubmit = async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const { error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
-    if (error) renderLogin("Sign-in failed. Check your email and password.");
-  };
+/* ===================== LOGIN AND START ===================== */
+async function loadProfile(){ S.profile = await run(sb.from("profiles").select("*").eq("id", S.user.id).single()); }
+async function loadSites(){ S.sites = await run(sb.from("sites").select("id,name,location").order("name")); }
+async function startApp(user){
+  S.user = user;
+  await loadProfile();
+  await loadSites();
+  S.site = pw() ? "all" : (S.profile.site_id || S.sites[0]?.id || "all");
+  buildNav();
+  $("#boot").classList.add("hidden");
+  $("#login").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  if (!location.hash) location.hash = "#home"; else route();
 }
+function showLogin(){ $("#boot").classList.add("hidden"); $("#app").classList.add("hidden"); $("#login").classList.remove("hidden"); }
+(async () => {
+  const {data} = await sb.auth.getSession();
+  if (data.session) await startApp(data.session.user); else showLogin();
+})().catch(e => { showLogin(); toast("⚠️ " + (e.message || e)); });
 
-async function loadApp() {
-  const { data: { user } } = await sb.auth.getUser();
-  const { data: prof } = await sb.from("profiles").select("*").eq("id", user.id).single();
-  if (!prof) {
-    root.innerHTML = `<div class="login-wrap"><div class="login"><h2>Account not set up</h2>
-      <p class="muted">Ask your HSE head to give your account a role.</p>
-      <button id="signout" class="btn block">Sign out</button></div></div>`;
-    $("#signout").onclick = () => sb.auth.signOut();
-    return;
-  }
-  me = prof;
-  if (me.role === "hse_officer") siteFilter = me.site_id || "";
-  const [s, t] = await Promise.all([
-    sb.from("sites").select("*").order("name"),
-    sb.from("checklist_templates").select("*").order("name")
-  ]);
-  sitesList = s.data || [];
-  templatesList = t.data || [];
-  shell();
-  go(location.hash.slice(1) || visibleNav()[0][0]);
-}
-
-/* ============ SHELL (sidebar on computers, bottom menu on phones) ============ */
-function shell() {
-  const nav = visibleNav();
-  const locked = me.role === "hse_officer";
-  root.innerHTML = `
-    <div class="layout">
-      <aside class="side">
-        <div class="brand"><span class="logo">E</span> EHS Management</div>
-        ${nav.map(([k, l]) => `<a href="#${k}" data-nav="${k}">${l}</a>`).join("")}
-        <div class="who">
-          <b>${esc(me.full_name || "")}</b>
-          <span>${esc(ROLE_NAMES[me.role] || me.role)}</span>
-          <button id="signout" type="button">Sign out</button>
-        </div>
-      </aside>
-      <div class="content">
-        <header class="topbar">
-          <div>
-            <h1 id="pageTitle"></h1>
-            <div class="sub" id="pageSub"></div>
-          </div>
-          <div class="tools">
-            <select id="siteSel" aria-label="Site" ${locked ? "disabled" : ""}>
-              ${locked ? siteOptions(me.site_id) : `<option value="">All sites</option>${siteOptions(siteFilter)}`}
-            </select>
-            <button class="btn sm mobile-out" id="signoutTop" type="button">Sign out</button>
-          </div>
-        </header>
-        <main id="main"></main>
-      </div>
-      <nav class="bottom">${nav.map(([k, l]) => `<a href="#${k}" data-nav="${k}">${l}</a>`).join("")}</nav>
-    </div>
-    <div id="toast" class="toast"></div>`;
-  $("#signout").onclick = () => sb.auth.signOut();
-  $("#signoutTop").onclick = () => sb.auth.signOut();
-  $("#siteSel").onchange = (e) => { siteFilter = e.target.value; go(view); };
-  window.onhashchange = () => go(location.hash.slice(1));
-}
-
-const VIEWS = { dashboard: viewDashboard, report: viewReport, inspect: viewInspect, actions: viewActions, documents: viewDocuments };
-const TITLES = Object.fromEntries(NAV.map(([k, l, s]) => [k, [l, s]]));
-
-function go(tab) {
-  const allowed = visibleNav().map(n => n[0]);
-  if (!allowed.includes(tab)) tab = allowed[0];
-  view = tab;
-  document.querySelectorAll("[data-nav]").forEach(a => a.classList.toggle("on", a.dataset.nav === tab));
-  if (location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
-  $("#pageTitle").textContent = TITLES[tab][0];
-  $("#pageSub").textContent = siteFilter ? siteName(siteFilter) : TITLES[tab][1];
-  VIEWS[tab]();
-}
-
-/* ============ DASHBOARD ============ */
-const bySite = (q) => (siteFilter ? q.eq("site_id", siteFilter) : q);
-
-async function viewDashboard() {
-  $("#main").innerHTML = `<div class="empty">Loading dashboard…</div>`;
-  const today = todayStr(), soon = plusDays(60);
-  const [k, a, c, t, r] = await Promise.all([
-    bySite(sb.from("v_monthly_kpi").select("*").gte("period", monthStart(-11)).order("period")),
-    bySite(sb.from("actions").select("*").neq("status", "Closed").order("due_date", { ascending: true, nullsFirst: false })),
-    bySite(sb.from("certificates").select("*").not("expiry", "is", null).lte("expiry", soon).order("expiry")),
-    bySite(sb.from("training").select("*").not("expiry", "is", null).lte("expiry", soon).order("expiry")),
-    bySite(sb.from("incidents").select("*").order("occurred_at", { ascending: false }).limit(6))
-  ]);
-  const failed = [k, a, c, t, r].find(x => x.error);
-  if (failed) { $("#main").innerHTML = `<div class="card err">Could not load data: ${esc(failed.error.message)}</div>`; return; }
-
-  const months = {};
-  for (const x of k.data) {
-    const m = (months[x.period] ||= { hours: 0, rec: 0, lti: 0, nm: 0 });
-    m.hours += Number(x.hours); m.rec += Number(x.recordable); m.lti += Number(x.lti); m.nm += Number(x.near_miss);
-  }
-  const keys = Object.keys(months).sort();
-  const tot = keys.reduce((z, key) => ({
-    hours: z.hours + months[key].hours, rec: z.rec + months[key].rec,
-    lti: z.lti + months[key].lti, nm: z.nm + months[key].nm
-  }), { hours: 0, rec: 0, lti: 0, nm: 0 });
-  const ltifr = tot.hours ? tot.lti * 1e6 / tot.hours : null;
-  const trir = tot.hours ? tot.rec * 2e5 / tot.hours : null;
-  const trirOf = (m) => (m.hours ? m.rec * 2e5 / m.hours : 0);
-  const maxT = Math.max(0, ...keys.map(key => trirOf(months[key])));
-  const overdue = a.data.filter(x => x.due_date && x.due_date < today);
-  const expiring = [
-    ...c.data.map(x => ({ kind: "Certificate", name: x.name, site: x.site_id, date: x.expiry })),
-    ...t.data.map(x => ({ kind: "Training", name: `${x.person_name}: ${x.competency}`, site: x.site_id, date: x.expiry }))
-  ].sort((p, q) => (p.date < q.date ? -1 : 1));
-
-  const kpi = (label, val, hint, cls = "") =>
-    `<div class="kpi ${cls}"><div class="label">${label}</div><div class="val">${val}</div><div class="hint">${hint}</div></div>`;
-
-  $("#main").innerHTML = `
-    <div class="stack">
-      <section class="kpis">
-        ${kpi("LTIFR · 12 months", fx(ltifr), `${tot.lti} lost-time per 1M hours`, tot.lti ? "bad" : "")}
-        ${kpi("TRIR · 12 months", fx(trir), `${tot.rec} recordable per 200k hours`, tot.rec ? "warn" : "")}
-        ${kpi("Open actions", a.data.length, `${overdue.length} overdue`, overdue.length ? "bad" : "")}
-        ${kpi("Expiring · 60 days", expiring.length, `${c.data.length} certificates · ${t.data.length} training`, expiring.length ? "warn" : "")}
-      </section>
-
-      <section class="grid two">
-        <div class="card">
-          <div class="sec-head"><h2>Monthly TRIR</h2><span class="muted">Last 12 months</span></div>
-          ${keys.length ? `<div class="bars">${keys.map(key => {
-            const v = trirOf(months[key]);
-            const h = maxT ? Math.max(4, v / maxT * 100) : 4;
-            return `<div class="bar"><b>${fx(v, 1)}</b><i style="height:${h}%"></i><small>${monthLabel(key)}</small></div>`;
-          }).join("")}</div>` : `<div class="empty">No manhours yet. Add monthly manhours in Report.</div>`}
-        </div>
-
-        <div class="card">
-          <div class="sec-head"><h2>Recent events</h2><span class="muted">Latest 6</span></div>
-          <div class="list">${r.data.length ? r.data.map(x => `
-            <div class="li">
-              <div><div style="font-weight:600">${esc(x.description)}</div>
-                <div class="meta">${esc(siteName(x.site_id))} · ${new Date(x.occurred_at).toLocaleDateString("en-GB")}</div></div>
-              <span class="pill ${EVENT_CLS[x.event_type] || ""}">${esc(EVENT_TYPES.find(e => e[0] === x.event_type)?.[1] || x.event_type)}</span>
-            </div>`).join("") : `<div class="empty">No events recorded.</div>`}</div>
-        </div>
-      </section>
-
-      <section class="grid two">
-        <div class="card">
-          <div class="sec-head"><h2>Open actions</h2><a class="btn sm ghost" href="#actions">View all</a></div>
-          <div class="list">${a.data.length ? a.data.slice(0, 6).map(x => `
-            <div class="li ${x.due_date && x.due_date < today ? "over" : ""}">
-              <div><div style="font-weight:600">${esc(x.description)}</div>
-                <div class="meta">${esc(siteName(x.site_id))} · Owner: ${esc(x.owner || "—")} · Due ${esc(x.due_date || "—")}</div></div>
-              <span class="pill ${x.due_date && x.due_date < today ? "bad" : "warn"}">${x.due_date && x.due_date < today ? "Overdue" : "Open"}</span>
-            </div>`).join("") : `<div class="empty">No open actions. Good work.</div>`}</div>
-        </div>
-
-        <div class="card">
-          <div class="sec-head"><h2>Expiring soon</h2><span class="muted">Within 60 days</span></div>
-          <div class="list">${expiring.length ? expiring.map(x => {
-            const dd = daysUntil(x.date);
-            return `<div class="li">
-              <div><div style="font-weight:600">${esc(x.name)}</div>
-                <div class="meta">${x.kind} · ${esc(siteName(x.site))} · ${dd < 0 ? "expired " + (-dd) + " days ago" : "due in " + dd + " days"}</div></div>
-              <span class="pill ${dd < 0 ? "bad" : "warn"}">${dd < 0 ? "Expired" : "Due"}</span>
-            </div>`;
-          }).join("") : `<div class="empty">Nothing expired or expiring soon.</div>`}</div>
-        </div>
-      </section>
-    </div>`;
-
-  document.querySelectorAll("[data-close]").forEach(b => { b.onclick = () => closeAction(b.dataset.close); });
-}
-
-async function closeAction(id) {
-  const { error } = await sb.from("actions").update({ status: "Closed", closed_at: new Date().toISOString() }).eq("id", id);
-  if (error) return toast("Could not close: " + error.message, false);
-  toast("Action closed");
-  go(view);
-}
-
-/* ============ REPORT ============ */
-const REPORTS = [["event","Event"],["manhours","Manhours"],["training","Training"]];
-
-function viewReport() {
-  $("#main").innerHTML = `
-    <div class="stack">
-      <div class="seg" role="tablist">${REPORTS.map(([k, l]) => `<button type="button" data-kind="${k}" class="${k === reportKind ? "on" : ""}">${l}</button>`).join("")}</div>
-      <section class="card" id="form"></section>
-    </div>`;
-  document.querySelectorAll("[data-kind]").forEach(b => { b.onclick = () => { reportKind = b.dataset.kind; viewReport(); }; });
-  if (reportKind === "event") formEvent();
-  if (reportKind === "manhours") formManhours();
-  if (reportKind === "training") formTraining();
-}
-
-function formEvent() {
-  $("#form").innerHTML = `
-    <div class="sec-head"><div><h2>Report an event</h2><div class="muted small">Near misses matter as much as injuries. Report every one.</div></div></div>
-    <form id="f" class="fgrid">
-      <div class="full">${siteField()}</div>
-      <label>Type<select name="event_type">${EVENT_TYPES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("")}</select></label>
-      <label>Injury class<select name="classification"><option value="">Not an injury</option>${CLASSES.map(c => `<option>${esc(c)}</option>`).join("")}</select></label>
-      <label>Date and time<input type="datetime-local" name="occurred_at" required value="${nowLocal()}"></label>
-      <label>Area or work front<input name="area"></label>
-      <div class="row2 full" style="margin-bottom:14px">
-        <label>Severity (1 to 5)<input type="number" name="severity" min="1" max="5" required></label>
-        <label>Likelihood (1 to 5)<input type="number" name="likelihood" min="1" max="5" required></label>
-      </div>
-      <label class="full">Description<textarea name="description" rows="3" required></textarea></label>
-      <label class="full">Root cause<select name="root_cause">${ROOT.map(r => `<option value="${esc(r)}">${esc(r || "Not yet known")}</option>`).join("")}</select></label>
-      <fieldset class="full">
-        <legend>Corrective action (optional)</legend>
-        <label>Action<input name="action_desc"></label>
-        <div class="row2">
-          <label>Owner<input name="action_owner"></label>
-          <label>Due date<input type="date" name="action_due" value="${plusDays(7)}"></label>
-        </div>
-      </fieldset>
-      <div class="full"><button class="btn primary block" type="submit">Submit report</button></div>
-    </form>`;
-
-  $("#f").onsubmit = async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const row = {
-      site_id: f.site_id.value,
-      event_type: f.event_type.value,
-      classification: f.classification.value || null,
-      occurred_at: new Date(f.occurred_at.value).toISOString(),
-      area: f.area.value.trim() || null,
-      severity: Number(f.severity.value),
-      likelihood: Number(f.likelihood.value),
-      description: f.description.value.trim(),
-      root_cause: f.root_cause.value || null
-    };
-    if (!row.site_id) return toast("Choose a site", false);
-    const { data, error } = await sb.from("incidents").insert(row).select().single();
-    if (error) return toast("Not saved: " + error.message, false);
-    if (f.action_desc.value.trim()) {
-      const { error: e2 } = await sb.from("actions").insert({
-        site_id: row.site_id,
-        description: f.action_desc.value.trim(),
-        owner: f.action_owner.value.trim() || null,
-        due_date: f.action_due.value || null,
-        source_incident_id: data.id
-      });
-      if (e2) return toast("Event saved, but the action failed: " + e2.message, false);
-    }
-    toast("Report saved");
-    f.reset();
-    f.occurred_at.value = nowLocal();
-    f.action_due.value = plusDays(7);
-  };
-}
-
-function formManhours() {
-  $("#form").innerHTML = `
-    <div class="sec-head"><div><h2>Monthly manhours</h2>
-      <div class="muted small">Total hours worked this month. This drives LTIFR and TRIR. Saving the same month again updates it.</div></div></div>
-    <form id="f" class="stack" style="max-width:520px">
-      ${siteField()}
-      <label>Month<input type="month" name="m" required value="${monthStart(0).slice(0, 7)}"></label>
-      <label>Total manhours<input type="number" name="hours" min="0" step="1" required></label>
-      <button class="btn primary block" type="submit">Save manhours</button>
-    </form>`;
-  $("#f").onsubmit = async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const { error } = await sb.from("manhours").upsert(
-      { site_id: f.site_id.value, period: f.m.value + "-01", hours: Number(f.hours.value) },
-      { onConflict: "site_id,period" }
-    );
-    if (error) return toast("Not saved: " + error.message, false);
-    toast("Manhours saved");
-    f.hours.value = "";
-  };
-}
-
-function formTraining() {
-  $("#form").innerHTML = `
-    <div class="sec-head"><div><h2>Training or competency</h2>
-      <div class="muted small">Expiry dates feed the Expiring list on the Dashboard.</div></div></div>
-    <form id="f" class="fgrid">
-      <div class="full">${siteField()}</div>
-      <label>Person's name<input name="person" required></label>
-      <label>Competency<select name="competency">${COMPETENCIES.map(c => `<option>${esc(c)}</option>`).join("")}</select></label>
-      <label>Provider<input name="provider"></label>
-      <div class="row2" style="margin-bottom:14px">
-        <label>Issued<input type="date" name="issued" value="${todayStr()}"></label>
-        <label>Expiry<input type="date" name="expiry"></label>
-      </div>
-      <div class="full"><button class="btn primary block" type="submit">Save record</button></div>
-    </form>`;
-  $("#f").onsubmit = async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const { error } = await sb.from("training").insert({
-      site_id: f.site_id.value,
-      person_name: f.person.value.trim(),
-      competency: f.competency.value,
-      provider: f.provider.value.trim() || null,
-      issued: f.issued.value || null,
-      expiry: f.expiry.value || null
-    });
-    if (error) return toast("Not saved: " + error.message, false);
-    toast("Training record saved");
-    f.person.value = "";
-    f.expiry.value = "";
-  };
-}
-
-/* ============ INSPECTIONS (checklist library) ============ */
-function viewInspect() {
-  if (activeTpl) return renderRun(activeTpl);
-  if (me.role === "viewer") { $("#main").innerHTML = `<div class="card empty">Inspections are recorded by site HSE officers.</div>`; return; }
-  const cats = ["All", ...new Set(templatesList.map(t => t.category))];
-  $("#main").innerHTML = `
-    <div class="stack">
-      <div class="card">
-        <div class="search"><input id="q" type="search" placeholder="Search checklists" value="${esc(inspectQ)}" aria-label="Search checklists"></div>
-        <div class="chips" style="margin-top:12px">${cats.map(c => `<button type="button" class="chip ${c === inspectCat ? "on" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")}</div>
-      </div>
-      <div class="card" id="lib"></div>
-    </div>`;
-  $("#q").oninput = (e) => { inspectQ = e.target.value; drawLibrary(); };
-  document.querySelectorAll("[data-cat]").forEach(b => { b.onclick = () => { inspectCat = b.dataset.cat; viewInspect(); }; });
-  drawLibrary();
-}
-
-function drawLibrary() {
-  const q = inspectQ.trim().toLowerCase();
-  const list = templatesList.filter(t =>
-    (inspectCat === "All" || t.category === inspectCat) && (!q || t.name.toLowerCase().includes(q)));
-  $("#lib").innerHTML = list.length ? `<div class="list">${list.map(t => `
-    <div class="li">
-      <div><div style="font-weight:600">${esc(t.name)}</div>
-        <div class="meta">${esc(t.category)} · ${t.items.length} items · ${t.items.filter(i => i.critical).length} critical</div></div>
-      <button class="btn sm primary" data-start="${t.id}">Start</button>
-    </div>`).join("")}</div>`
-    : `<div class="empty">No checklists match your search.</div>`;
-  document.querySelectorAll("[data-start]").forEach(b => {
-    b.onclick = () => { activeTpl = templatesList.find(t => t.id === b.dataset.start); viewInspect(); };
-  });
-}
-
-function renderRun(tpl) {
-  $("#main").innerHTML = `
-    <div class="stack">
-      <div><button class="btn sm ghost" id="back" type="button">← All checklists</button></div>
-      <div class="card">
-        <div class="sec-head"><div><h2>${esc(tpl.name)}</h2><div class="muted small">${esc(tpl.category)} · ${tpl.items.length} items</div></div></div>
-        <form id="runForm" class="stack">
-          <div class="row2">
-            ${me.role === "hse_officer" ? `<input type="hidden" name="site_id" value="${me.site_id || ""}"><label>Site<input value="${esc(siteName(me.site_id))}" disabled></label>`
-              : `<label>Site<select name="site_id" required><option value="">Choose site</option>${siteOptions(siteFilter)}</select></label>`}
-            <label>Inspection date<input type="date" name="when" value="${todayStr()}"></label>
-          </div>
-          <label style="margin:0">Days to close failed items (critical: max 3)<input type="number" name="days" min="1" value="7"></label>
-          ${tpl.items.map((it, i) => `
-            <div class="qi ${it.critical ? "crit" : ""}">
-              <div class="qt">${esc(it.text)} ${it.critical ? '<span class="pill bad">Critical</span>' : ""}</div>
-              <div class="seg3">
-                <label><input type="radio" name="r_${i}" value="pass" required><span>Pass</span></label>
-                <label><input type="radio" name="r_${i}" value="fail"><span>Fail</span></label>
-                <label><input type="radio" name="r_${i}" value="na"><span>N/A</span></label>
-              </div>
-              <input name="n_${i}" placeholder="Note (required if Fail)">
-            </div>`).join("")}
-          <label>Overall notes<textarea name="notes" rows="2"></textarea></label>
-          <button class="btn primary block" type="submit">Submit inspection</button>
-        </form>
-      </div>
-    </div>`;
-  $("#back").onclick = () => { activeTpl = null; viewInspect(); };
-  $("#runForm").onsubmit = (e) => submitChecklist(e, tpl);
-}
-
-async function submitChecklist(e, tpl) {
+$("#lf").addEventListener("submit", async e => {
   e.preventDefault();
-  const f = e.target;
-  const siteId = f.site_id.value;
-  if (!siteId) return toast("Choose a site", false);
-  const days = Number(f.days.value) || 7;
-  const answers = {};
-  const failures = [];
-  let pass = 0, fail = 0, na = 0;
-  tpl.items.forEach((it, i) => {
-    const result = f[`r_${i}`].value;
-    const note = f[`n_${i}`].value.trim();
-    answers[it.id] = { result, note };
-    if (result === "pass") pass++;
-    else if (result === "fail") { fail++; failures.push({ it, note }); }
-    else na++;
-  });
-  if (failures.some(x => !x.note)) return toast("Add a note for every failed item", false);
+  $("#lmsg").textContent = "Signing in…";
+  try {
+    const {data, error} = await sb.auth.signInWithPassword({email: $("#le").value.trim(), password: $("#lp").value});
+    if (error) throw error;
+    await startApp(data.user);
+  } catch (x) { $("#lmsg").textContent = "❌ " + x.message; }
+});
+$("#forgot").addEventListener("click", async () => {
+  const em = $("#le").value.trim();
+  if (!em) return toast("Type your email first");
+  const {error} = await sb.auth.resetPasswordForEmail(em);
+  toast(error ? "⚠️ " + error.message : "📧 Reset link sent to your email");
+});
 
-  const score = pass + fail ? Math.round(pass / (pass + fail) * 1000) / 10 : null;
-  const { data, error } = await sb.from("inspections").insert({
-    site_id: siteId, template_id: tpl.id,
-    inspected_at: new Date(f.when.value + "T09:00:00").toISOString(),
-    answers, score, fails: fail
-  }).select().single();
-  if (error) return toast("Not saved: " + error.message, false);
-
-  if (failures.length) {
-    const rows = failures.map(x => ({
-      site_id: siteId,
-      source_inspection_id: data.id,
-      description: `${tpl.name}: ${x.it.text} (${x.note})`,
-      due_date: plusDays(x.it.critical ? Math.min(days, 3) : days),
-      status: "Open"
-    }));
-    const { error: e2 } = await sb.from("actions").insert(rows);
-    if (e2) return toast("Inspection saved, but actions failed: " + e2.message, false);
-  }
-  activeTpl = null;
-  toast(`Saved. Score ${score ?? "—"}%. ${failures.length} action(s) created.`);
-  $("#main").innerHTML = `
-    <div class="card" style="max-width:560px">
-      <h2>Inspection saved</h2>
-      <p style="font-size:28px;font-weight:750;margin:10px 0 4px">${score ?? "—"}%</p>
-      <p class="muted">Pass ${pass} · Fail ${fail} · N/A ${na}</p>
-      <p class="muted small">Failed items are now corrective actions. Track them on the Actions page.</p>
-      <div class="right" style="justify-content:flex-start;margin-top:14px">
-        <button class="btn primary" id="again" type="button">Another inspection</button>
-        <a class="btn" href="#actions">View actions</a>
-      </div>
-    </div>`;
-  $("#again").onclick = () => viewInspect();
-}
-
-/* ============ ACTIONS ============ */
-function viewActions() {
-  $("#main").innerHTML = `
-    <div class="stack">
-      <div class="seg">${[["open","Open"],["overdue","Overdue"],["closed","Closed"]].map(([k, l]) =>
-        `<button type="button" data-f="${k}" class="${k === actFilter ? "on" : ""}">${l}</button>`).join("")}</div>
-      <div class="card" id="actList"><div class="empty">Loading…</div></div>
-    </div>`;
-  document.querySelectorAll("[data-f]").forEach(b => { b.onclick = () => { actFilter = b.dataset.f; viewActions(); }; });
-  loadActions();
-}
-
-async function loadActions() {
-  const today = todayStr();
-  let q = bySite(sb.from("actions").select("*").order("due_date", { ascending: true, nullsFirst: false }));
-  q = actFilter === "closed" ? q.eq("status", "Closed") : q.neq("status", "Closed");
-  const { data, error } = await q;
-  if (error) { $("#actList").innerHTML = `<div class="err">${esc(error.message)}</div>`; return; }
-  let rows = data;
-  if (actFilter === "overdue") rows = rows.filter(x => x.due_date && x.due_date < today);
-  $("#actList").innerHTML = rows.length ? `<div class="list">${rows.map(x => {
-    const od = x.status !== "Closed" && x.due_date && x.due_date < today;
-    return `<div class="li ${od ? "over" : ""}">
-      <div><div style="font-weight:600">${esc(x.description)}</div>
-        <div class="meta">${esc(siteName(x.site_id))} · Owner: ${esc(x.owner || "—")} · Due ${esc(x.due_date || "—")}</div></div>
-      <div class="right">
-        ${od ? '<span class="pill bad">Overdue</span>' : x.status === "Closed" ? '<span class="pill ok">Closed</span>' : '<span class="pill warn">Open</span>'}
-        ${canWrite() && x.status !== "Closed" ? `<button class="btn sm" data-close="${x.id}">Mark closed</button>` : ""}
-      </div>
-    </div>`;
-  }).join("")}</div>` : `<div class="empty">Nothing here.</div>`;
-  document.querySelectorAll("[data-close]").forEach(b => { b.onclick = () => closeAction(b.dataset.close); });
-}
-
-/* ============ DOCUMENTS ============ */
-async function viewDocuments() {
-  const [d, ak] = await Promise.all([
-    sb.from("documents").select("*").order("updated_at", { ascending: false }),
-    sb.from("document_acks").select("document_id").eq("user_id", me.id)
+/* ===================== HOME ===================== */
+PAGES.home = async () => {
+  const yr = localISO().slice(0,4) + "-01-01";
+  const [kRows, openRows, lastLti, recent] = await Promise.all([
+    run(sf(sb.from("v_monthly_kpi").select("*")).gte("period", yr)),
+    run(sf(sb.from("actions").select("id,status,due_date")).neq("status", "Closed").limit(1000)),
+    run(sf(sb.from("incidents").select("occurred_at")).in("classification", ["Lost time","Fatality"]).order("occurred_at", {ascending:false}).limit(1)),
+    run(sf(sb.from("incidents").select("id,event_type,classification,description,occurred_at,area,sites(name),reporter:profiles!reported_by(full_name)")).order("occurred_at", {ascending:false}).limit(6))
   ]);
-  if (d.error) { $("#main").innerHTML = `<div class="card err">${esc(d.error.message)}</div>`; return; }
-  ackSet = new Set((ak.data || []).map(x => x.document_id));
-  const canUp = canWrite();
+  const a = agg(kRows);
+  const overdue = openRows.filter(r => r.due_date && r.due_date < localISO()).length;
+  const days = lastLti.length ? Math.floor((Date.now() - new Date(lastLti[0].occurred_at)) / 864e5) : null;
+  const siteName = S.site === "all" ? "All areas" : (S.sites.find(s => s.id === S.site)?.name || "");
+  const quick = can("enter")
+    ? [["incident","🚨","Report incident","Injury, damage, spill"],["near_miss","🟡","Near miss","Something almost happened"],["unsafe_condition","⚠️","Unsafe condition","Hazard seen on site"],["manhours","⏱️","Manhours","Hours worked this month"],["inspections","✅","Inspection","Run a checklist"],["training","🎓","Training","Add a training record"]]
+    : [["reports","📊","Reports","KPIs and registers"],["approvals","🔑","Approvals","Approve access requests"],["docs","📁","Documents","Read and acknowledge"],["access","🔓","Request access","See another area"]];
+  const quickHref = q => q[0] === "incident" || q[0] === "near_miss" || q[0] === "unsafe_condition" || q[0] === "manhours" || q[0] === "training" ? `#enter/${q[0]}` : `#${q[0]}`;
   $("#main").innerHTML = `
-    <div class="stack">
-      <div class="sec-head">
-        <div class="muted small">Read only for most people. "I have read this" records your acknowledgement. Downloads are logged.</div>
-        ${canUp ? `<button class="btn primary" id="toggleUp" type="button">${docUploadOpen ? "Close upload" : "Upload document"}</button>` : ""}
-      </div>
-      ${canUp && docUploadOpen ? uploadPanel() : ""}
-      <div class="card">
-        ${d.data.length ? `<div class="list">${d.data.map(docRow).join("")}</div>`
-          : `<div class="empty">No documents yet.${canUp ? " Upload the first one." : ""}</div>`}
-      </div>
-    </div>`;
-  if ($("#toggleUp")) $("#toggleUp").onclick = () => { docUploadOpen = !docUploadOpen; viewDocuments(); };
-  bindDocs();
-  bindUpload();
-}
+    ${header(`${greet()}, ${esc(first(S.profile.full_name))} 👋`, `${roleChip(role())} <span class="muted">· ${esc(siteName)}</span>`)}
+    ${shield()}
+    <div class="kpis">
+      ${kpi("🏅", days === null ? "–" : days, days === null ? "No LTI on record 🎉" : "days without a lost-time injury")}
+      ${kpi("📉", a.ltifr.toFixed(2), "LTIFR (this year)")}
+      ${kpi("🩹", a.recordable, "Recordable injuries (YTD)")}
+      ${kpi("🟡", a.near, "Near misses (YTD)")}
+      ${kpi("⏱️", fmtN(a.hours), "Manhours (YTD)")}
+      ${kpi("⏳", openRows.length, "Open actions")}
+      ${kpi("⛔", overdue, "Overdue actions")}
+    </div>
+    <div class="sec">⚡ Quick actions</div>
+    <div class="tiles">${quick.map(q => `<a class="tile" href="${quickHref(q)}"><div class="ic">${q[1]}</div><b>${q[2]}</b><small>${q[3]}</small></a>`).join("")}</div>
+    <div class="sec">🕒 Latest reports</div>
+    <div class="list">${recent.map(r => `<div class="item ${r.event_type === "incident" ? "hi" : r.event_type === "near_miss" ? "md" : "blue"}">
+      <div class="row"><b>${ENTRY_TYPES.find(t => t.id === r.event_type)?.ic || "📝"} ${esc(r.classification || ENTRY_TYPES.find(t => t.id === r.event_type)?.t)}</b><span class="small muted">${ft(r.occurred_at)}</span></div>
+      <div class="small" style="margin-top:6px">${esc(r.description).slice(0,120)}</div>
+      <div class="small muted" style="margin-top:6px">📍 ${esc(r.sites?.name || "")} · ${esc(r.area || "")} · 👤 ${esc(r.reporter?.full_name || "")}</div>
+    </div>`).join("") || empty("📭", "No reports yet. Tap 🚨 Report incident to start.")}</div>`;
+};
 
-function docRow(x) {
-  const due = x.review_due ? daysUntil(x.review_due) : null;
-  const dueTag = due === null ? "" : due < 0 ? '<span class="pill bad">Review overdue</span>'
-    : due <= 30 ? `<span class="pill warn">Review in ${due} d</span>` : "";
-  const statusCls = x.status === "Approved" ? "ok" : x.status === "Obsolete" ? "bad" : "warn";
-  return `<div class="li">
-    <div>
-      <div style="font-weight:600">${esc(x.title)} ${x.restricted ? '<span class="pill info">Restricted</span>' : ""}</div>
-      <div class="meta">${esc(x.doc_no || "No doc no.")} · v${esc(x.version)} · ${esc(x.category || "")} · ${esc(siteName(x.site_id))}</div>
-      <div class="right" style="justify-content:flex-start;margin-top:8px">
-        <span class="pill ${statusCls}">${esc(x.status)}</span> ${dueTag}
+/* ===================== ENTER DATA ===================== */
+PAGES.enter = async (arg) => {
+  if (!can("enter")) return denied();
+  const sub = (arg || "").split("/")[0];
+  if (!sub) return enterHub();
+  if (["incident","near_miss","unsafe_condition"].includes(sub)) return formIncident(sub);
+  if (sub === "manhours") return formManhours();
+  if (sub === "training") return formTraining();
+  if (sub === "cert") return formCert();
+  if (sub === "action") return formAction();
+  return enterHub();
+};
+function enterHub(){
+  const tiles = [
+    ["enter/incident","🚨","Incident","Injury, damage or spill"],
+    ["enter/near_miss","🟡","Near miss","Could have hurt someone"],
+    ["enter/unsafe_condition","⚠️","Unsafe condition","Hazard seen on site"],
+    ["enter/manhours","⏱️","Manhours","Hours worked per month"],
+    ["inspections","✅","Inspection","Run a checklist"],
+    ["enter/training","🎓","Training","Competency and expiry"],
+    ["enter/cert","📜","Certificate","Licence, permit, cert"],
+    ["enter/action","🛠️","Corrective action","Assign an owner"]
+  ];
+  if (can("upload")) tiles.push(["docs/new","📄","Upload document","Procedure, form, plan"]);
+  $("#main").innerHTML = header("➕ Enter data", "Pick what you want to record") +
+    `<div class="tiles">${tiles.map(t => `<a class="tile" href="#${t[0]}"><div class="ic">${t[1]}</div><b>${t[2]}</b><small>${t[3]}</small></a>`).join("")}</div>`;
+}
+function formIncident(kind){
+  const et = ENTRY_TYPES.find(t => t.id === kind);
+  $("#main").innerHTML = header(`${et.ic} ${et.t}`, et.d) + `
+  <div class="card">
+    <div class="seg">${ENTRY_TYPES.map(t => `<a class="${t.id === kind ? "on" : ""}" href="#enter/${t.id}">${t.ic} ${t.t}</a>`).join("")}</div>
+    <form id="fInc" data-kind="${kind}">
+      <label>🏗️ Area</label>${siteField()}
+      <label>📅 When did it happen?</label>
+      <input type="datetime-local" name="occurred_at" value="${nowLocal()}" required>
+      <label>📍 Exact place</label>
+      <input name="area" placeholder="e.g. Block B, scaffold level 3" required>
+      ${kind === "incident" ? `<label>🏷️ Type of injury or damage</label><select name="classification" required>${CLASSES.map(c => `<option>${CLASS_ICON(c)} ${c}</option>`).join("")}</select>` : ""}
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div><label>⚠️ Severity (1–5)</label><select name="severity">${[1,2,3,4,5].map(n => `<option ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+        <div><label>🎲 Likelihood (1–5)</label><select name="likelihood">${[1,2,3,4,5].map(n => `<option ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}</select></div>
       </div>
-    </div>
-    <div class="right">
-      <button class="btn sm primary" data-open="${x.id}">Open</button>
-      ${ackSet.has(x.id) ? '<span class="pill ok">Read</span>' : `<button class="btn sm" data-ack="${x.id}">I have read this</button>`}
-      ${isAdmin() ? `<button class="btn sm danger" data-del="${x.id}">Delete</button>` : ""}
-    </div>
+      <label>📝 What happened?</label>
+      <textarea name="description" rows="4" required placeholder="Who, what, how. Keep it factual."></textarea>
+      <label>🔍 Root cause (if known)</label>
+      <textarea name="root_cause" rows="2"></textarea>
+      <div class="card" style="background:#F8FAFC;margin-top:14px;box-shadow:none">
+        <b>🛠️ Corrective action (optional)</b>
+        <label>What will be done?</label><input name="ac_desc">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+          <div><label>👤 Owner</label><input name="ac_owner"></div>
+          <div><label>📅 Due</label><input type="date" name="ac_due" value="${addDays(14)}"></div>
+        </div>
+        <label>🚦 Priority</label>
+        <select name="ac_priority"><option>High</option><option selected>Medium</option><option>Low</option></select>
+      </div>
+      <button class="btn block" style="margin-top:16px">💾 Save report</button>
+    </form>
   </div>`;
 }
+const CLASS_ICON = c => CLASS_IC[c] || "📌";
+function formManhours(){
+  $("#main").innerHTML = header("⏱️ Manhours", "Hours worked per area per month. This feeds the KPIs.") + `
+  <div class="card"><form id="fMan">
+    <label>📍 Area</label>${siteField()}
+    <label>🗓️ Month</label><input type="month" name="month" value="${localISO().slice(0,7)}" required>
+    <label>⏱️ Total hours (all staff and contractors)</label>
+    <input type="number" name="hours" min="0" step="1" required placeholder="e.g. 42000">
+    <button class="btn block" style="margin-top:16px">💾 Save manhours</button>
+  </form></div>`;
+}
+function formTraining(){
+  $("#main").innerHTML = header("🎓 Training record", "Who was trained, on what, and until when") + `
+  <div class="card"><form id="fTrn">
+    <label>📍 Area</label>${siteField()}
+    <label>👤 Person's name</label><input name="person_name" required>
+    <label>🎯 Competency / course</label><input name="competency" required placeholder="e.g. Working at height">
+    <label>🏫 Provider</label><input name="provider">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>📅 Issued</label><input type="date" name="issued"></div>
+      <div><label>⌛ Expiry</label><input type="date" name="expiry"></div>
+    </div>
+    <button class="btn block" style="margin-top:16px">💾 Save training</button>
+  </form></div>`;
+}
+function formCert(){
+  $("#main").innerHTML = header("📜 Certificate or permit", "Licences, certificates, permits. Track applied and certified.") + `
+  <div class="card"><form id="fCert">
+    <label>📍 Area</label>${siteField()}
+    <label>🏷️ Name</label><input name="name" required placeholder="e.g. Crane operator licence">
+    <label>📂 Category</label>
+    <select name="category">${["Statutory","Certification","Licence","Permit","Other"].map(c => `<option>${c}</option>`).join("")}</select>
+    <label>🚦 Stage</label>
+    <select name="stage"><option>Certified</option><option>Applied</option></select>
+    <label>🏛️ Issuing agency</label><input name="agency">
+    <label>⌛ Expiry</label><input type="date" name="expiry">
+    <label>📝 Notes</label><textarea name="notes" rows="2"></textarea>
+    <button class="btn block" style="margin-top:16px">💾 Save</button>
+  </form></div>`;
+}
+function formAction(){
+  $("#main").innerHTML = header("🛠️ Corrective action", "Something that must be fixed, with an owner and a date") + `
+  <div class="card"><form id="fAct">
+    <label>📍 Area</label>${siteField()}
+    <label>📝 What must be done?</label><textarea name="description" rows="3" required></textarea>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>👤 Owner</label><input name="owner"></div>
+      <div><label>📅 Due</label><input type="date" name="due_date" value="${addDays(7)}" required></div>
+    </div>
+    <label>🚦 Priority</label>
+    <select name="priority"><option>High</option><option selected>Medium</option><option>Low</option></select>
+    <button class="btn block" style="margin-top:16px">💾 Save action</button>
+  </form></div>`;
+}
 
-function bindDocs() {
-  document.querySelectorAll("[data-open]").forEach(b => { b.onclick = () => openDoc(b.dataset.open); });
-  document.querySelectorAll("[data-ack]").forEach(b => {
-    b.onclick = async () => {
-      const { error } = await sb.from("document_acks").insert({ document_id: b.dataset.ack, user_id: me.id });
-      if (error) return toast(error.message, false);
-      toast("Recorded. Thank you.");
-      viewDocuments();
-    };
+/* ===================== INSPECTIONS (checklists) ===================== */
+PAGES.inspections = async () => {
+  const [tpls, recent] = await Promise.all([
+    run(sb.from("checklist_templates").select("id,name,category,items").order("category")),
+    run(sf(sb.from("inspections").select("id,score,fails,inspected_at,sites(name),checklist_templates(name),by:profiles!inspector(full_name)")).order("inspected_at", {ascending:false}).limit(20))
+  ]);
+  $("#main").innerHTML = header("📋 Inspections", "Choose a checklist. Any Fail creates a corrective action automatically.") + shield() + `
+    ${can("enter") ? `<div class="tiles">${tpls.map(t => `<a class="tile" href="#inspect/${t.id}"><div class="ic">${catIc(t.category)}</div><b>${esc(t.name)}</b><small>${t.items.length} checks</small></a>`).join("")}</div>` : ""}
+    <div class="sec">🗂️ Recent inspections</div>
+    <div class="list">${recent.map(r => `<div class="item ${r.score >= 90 ? "lo" : r.score >= 70 ? "md" : "hi"}">
+      <div class="row"><b>${esc(r.checklist_templates?.name || "")}</b><span class="chip ${r.score >= 90 ? "ok" : r.score >= 70 ? "warn" : "bad"}">${r.score ?? "–"}%</span></div>
+      <div class="small muted" style="margin-top:6px">📍 ${esc(r.sites?.name || "")} · 📅 ${ft(r.inspected_at)} · 👤 ${esc(r.by?.full_name || "")} · ❌ ${r.fails} fail(s)</div>
+    </div>`).join("") || empty("📭", "No inspections yet")}</div>`;
+};
+PAGES.inspect = async (id) => {
+  if (!can("enter")) return denied();
+  const t = await run(sb.from("checklist_templates").select("*").eq("id", id).single());
+  S.tpl = t;
+  const crit = t.items.filter(i => i.critical).length;
+  $("#main").innerHTML = header(`${catIc(t.category)} ${esc(t.name)}`, `${t.items.length} checks · ${crit} critical`) + `
+  <form id="fIns">
+    <div class="card">
+      <label>📍 Area</label>${siteField()}
+      <label>👷 Inspected by</label><input value="${esc(S.profile.full_name || "")}" disabled>
+    </div>
+    <div class="sec">Checklist <span class="muted small" id="prog">0 of ${t.items.length} checked</span></div>
+    ${t.items.map(it => `
+      <div class="check-row" data-item="${esc(it.id)}">
+        <div class="row"><b>${esc(it.text)}</b>${it.critical ? '<span class="chip bad">CRITICAL</span>' : ""}</div>
+        <div class="pf">
+          <button type="button" class="p" data-act="pf" data-s="pass">✅ Pass</button>
+          <button type="button" class="f" data-act="pf" data-s="fail">❌ Fail</button>
+          <button type="button" class="n" data-act="pf" data-s="na">➖ N/A</button>
+        </div>
+        <textarea class="note hidden" rows="2" placeholder="What did you see? (required for Fail)" style="margin-top:10px"></textarea>
+      </div>`).join("")}
+    <button class="btn block" style="margin-top:12px">📤 Submit inspection</button>
+  </form>`;
+};
+function updProg(){
+  const f = $("#fIns"); if (!f) return;
+  const done = f.querySelectorAll("[data-item][data-s]").length;
+  const total = f.querySelectorAll("[data-item]").length;
+  $("#prog").textContent = `${done} of ${total} checked`;
+}
+
+/* ===================== ACTIONS ===================== */
+PAGES.actions = async (f = "open") => {
+  const rows = await run(sf(sb.from("actions").select("*, sites(name)")).order("due_date", {ascending:true, nullsFirst:false}).limit(400));
+  const t = localISO();
+  const isOpen = r => r.status !== "Closed";
+  const list = rows.filter(r => f === "all" ? true : f === "closed" ? r.status === "Closed" : f === "overdue" ? (isOpen(r) && r.due_date && r.due_date < t) : isOpen(r));
+  const tab = (k, lbl) => `<a class="${f === k ? "on" : ""}" href="#actions/${k}">${lbl}</a>`;
+  $("#main").innerHTML = header("✅ Actions", "Corrective actions from incidents, near misses and inspections") + `
+    <div class="seg" style="margin-bottom:14px">${tab("open","🟡 Open")}${tab("overdue","⛔ Overdue")}${tab("closed","✅ Closed")}${tab("all","📋 All")}</div>
+    <div class="list">${list.map(r => {
+      const od = isOpen(r) && r.due_date && r.due_date < t;
+      const pc = r.priority === "High" ? "hi" : r.priority === "Medium" ? "md" : "lo";
+      const pchip = r.priority === "High" ? "bad" : r.priority === "Medium" ? "warn" : "ok";
+      return `<div class="item ${pc}">
+        <div class="row"><b>${esc(r.description)}</b><span class="chip ${pchip}">${esc(r.priority)}</span></div>
+        <div class="small muted" style="margin-top:6px">📍 ${esc(r.sites?.name || "")} · 👤 ${esc(r.owner || "Unassigned")} · 📅 ${fd(r.due_date)} ${od ? '<span class="chip bad">OVERDUE</span>' : ""}</div>
+        <div class="row" style="margin-top:10px">
+          <span class="chip">${r.status === "Closed" ? "✅ Closed" : r.status === "In progress" ? "🔧 In progress" : "🟡 Open"}</span>
+          ${can("enter") && isOpen(r) ? `<span style="display:flex;gap:8px">
+            ${r.status === "Open" ? `<button class="btn ghost sm" data-act="act_status" data-id="${r.id}" data-s="In progress">🔧 Start</button>` : ""}
+            <button class="btn ok sm" data-act="act_status" data-id="${r.id}" data-s="Closed">✅ Close</button></span>` : ""}
+        </div></div>`;
+    }).join("") || empty("🎉", "Nothing here. Well done.")}</div>`;
+};
+
+/* ===================== REPORTS ===================== */
+PAGES.reports = async (tab = "kpi") => {
+  const tabs = [["kpi","📈 KPIs"],["incidents","🚨 Incidents"],["inspections","✅ Inspections"],["training","🎓 Training & certs"]];
+  const seg = `<div class="seg" style="margin-bottom:14px">${tabs.map(([k,l]) => `<a class="${k === tab ? "on" : ""}" href="#reports/${k}">${l}</a>`).join("")}</div>`;
+  let body = "";
+  if (tab === "incidents") body = await reportIncidents();
+  else if (tab === "inspections") body = await reportInspections();
+  else if (tab === "training") body = await reportTraining();
+  else body = await reportKpi();
+  $("#main").innerHTML = header("📊 Reports", "Live from the database. Anyone can export their view to Excel (CSV).") + shield() + seg + body;
+};
+async function reportKpi(){
+  const since = localISO(new Date(Date.now() - 365*864e5)).slice(0,7) + "-01";
+  const rows = await run(sf(sb.from("v_monthly_kpi").select("*")).gte("period", since).order("period", {ascending:false}));
+  const byM = {};
+  rows.forEach(r => {
+    const m = r.period;
+    byM[m] = byM[m] || {period:m, hours:0, recordable:0, lti:0, near_miss:0};
+    byM[m].hours += +r.hours; byM[m].recordable += +r.recordable; byM[m].lti += +r.lti; byM[m].near_miss += +r.near_miss;
   });
-  document.querySelectorAll("[data-del]").forEach(b => { b.onclick = () => deleteDoc(b.dataset.del); });
+  const list = Object.values(byM).sort((a,b) => a.period < b.period ? 1 : -1).map(m => ({
+    ...m,
+    ltifr: m.hours ? +(m.lti * 1e6 / m.hours).toFixed(2) : 0,
+    trir: m.hours ? +(m.recordable * 2e5 / m.hours).toFixed(2) : 0
+  }));
+  S.last = {name: "kpi", rows: list, cols: [["Month","period"],["Manhours","hours"],["Recordable","recordable"],["LTI","lti"],["Near miss","near_miss"],["LTIFR","ltifr"],["TRIR","trir"]]};
+  const t = agg(list);
+  const maxL = Math.max(1, ...list.map(m => m.ltifr));
+  return `
+    <div class="kpis">${kpi("⏱️", fmtN(t.hours), "Manhours (12 months)")}${kpi("🩹", t.recordable, "Recordable injuries")}${kpi("⛔", t.lti, "Lost-time injuries")}${kpi("📉", t.ltifr.toFixed(2), "LTIFR (12 months)")}</div>
+    <div class="card" style="margin-top:14px">
+      <div class="row"><h2>📉 LTIFR by month</h2>${exportBtn()}</div>
+      ${list.length ? list.map(m => `<div class="row small" style="margin:10px 0">
+        <span style="width:70px">${m.period.slice(0,7)}</span>
+        <div class="bar ${m.ltifr > 0 ? "bad" : ""}" style="flex:1"><i style="width:${Math.round(m.ltifr / maxL * 100)}%"></i></div>
+        <b style="width:60px;text-align:right">${m.ltifr}</b></div>`).join("") : empty("📭", "No data yet. Enter manhours and incidents first.")}
+    </div>
+    <div class="card" style="margin-top:14px"><div class="scroll"><table>
+      <tr><th>Month</th><th>Manhours</th><th>Rec.</th><th>LTI</th><th>Near miss</th><th>LTIFR</th><th>TRIR</th></tr>
+      ${list.map(m => `<tr><td>${m.period.slice(0,7)}</td><td>${fmtN(m.hours)}</td><td>${m.recordable}</td><td>${m.lti}</td><td>${m.near_miss}</td><td>${m.ltifr}</td><td>${m.trir}</td></tr>`).join("")}
+    </table></div></div>`;
+}
+async function reportIncidents(){
+  const r = S.range || {from: addDays(-90), to: localISO()};
+  const rows = await run(sf(sb.from("incidents").select("*, sites(name), reporter:profiles!reported_by(full_name)"))
+    .gte("occurred_at", r.from).lte("occurred_at", r.to + "T23:59:59").order("occurred_at", {ascending:false}).limit(500));
+  const label = e => ENTRY_TYPES.find(t => t.id === e)?.t || e;
+  S.last = {name: "incidents", rows, cols: [
+    ["Date", x => ft(x.occurred_at)], ["Type", x => label(x.event_type)], ["Class", x => x.classification || ""],
+    ["Area", "area"], ["Site", x => x.sites?.name || ""], ["Severity", "severity"], ["Likelihood", "likelihood"],
+    ["Description", "description"], ["Entered by", x => x.reporter?.full_name || ""]
+  ]};
+  const c = {inc: rows.filter(x => x.event_type === "incident").length, nm: rows.filter(x => x.event_type === "near_miss").length, uc: rows.filter(x => x.event_type === "unsafe_condition").length};
+  return `
+    <div class="card"><form id="fRange" class="grid" style="grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+      <div><label>📅 From</label><input type="date" name="fromD" value="${r.from}"></div>
+      <div><label>📅 To</label><input type="date" name="toD" value="${r.to}"></div>
+      <button class="btn sm" style="margin-bottom:2px">🔍 Apply</button>
+    </form></div>
+    <div class="kpis" style="margin-top:14px">${kpi("🚨", c.inc, "Incidents")}${kpi("🟡", c.nm, "Near misses")}${kpi("⚠️", c.uc, "Unsafe conditions")}${kpi("🧾", rows.length, "Total entries")}</div>
+    <div class="card" style="margin-top:14px"><div class="row" style="margin-bottom:8px"><h2>🚨 Register</h2>${exportBtn()}</div>
+    <div class="scroll"><table><tr><th>Date</th><th>Type</th><th>Area</th><th>Site</th><th>Sev × Lik</th><th>Description</th><th>Entered by</th></tr>
+    ${rows.map(x => `<tr><td>${ft(x.occurred_at)}</td><td>${ENTRY_TYPES.find(t => t.id === x.event_type)?.ic || ""} ${label(x.event_type)}${x.classification ? `<br><span class="muted">${CLASS_ICON(x.classification)} ${esc(x.classification)}</span>` : ""}</td><td>${esc(x.area || "")}</td><td>${esc(x.sites?.name || "")}</td><td>${(x.severity||0) * (x.likelihood||0)}</td><td>${esc(x.description).slice(0,90)}</td><td>${esc(x.reporter?.full_name || "")}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">No entries in this date range</td></tr>`}
+    </table></div></div>`;
+}
+async function reportInspections(){
+  const rows = await run(sf(sb.from("inspections").select("*, sites(name), checklist_templates(name), by:profiles!inspector(full_name)")).order("inspected_at", {ascending:false}).limit(300));
+  S.last = {name: "inspections", rows, cols: [
+    ["Date", x => ft(x.inspected_at)], ["Site", x => x.sites?.name || ""], ["Checklist", x => x.checklist_templates?.name || ""],
+    ["Score %", "score"], ["Fails", "fails"], ["Inspected by", x => x.by?.full_name || ""]
+  ]};
+  return `<div class="card"><div class="row" style="margin-bottom:8px"><h2>✅ Inspection register</h2>${exportBtn()}</div>
+    <div class="scroll"><table><tr><th>Date</th><th>Site</th><th>Checklist</th><th>Score</th><th>Fails</th><th>Inspected by</th></tr>
+    ${rows.map(x => `<tr><td>${ft(x.inspected_at)}</td><td>${esc(x.sites?.name || "")}</td><td>${esc(x.checklist_templates?.name || "")}</td><td><span class="chip ${x.score >= 90 ? "ok" : x.score >= 70 ? "warn" : "bad"}">${x.score ?? "–"}%</span></td><td>${x.fails}</td><td>${esc(x.by?.full_name || "")}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No inspections yet</td></tr>`}
+    </table></div></div>`;
+}
+async function reportTraining(){
+  const [tr, ce] = await Promise.all([
+    run(sf(sb.from("training").select("*, sites(name)")).order("expiry", {ascending:true, nullsFirst:false}).limit(300)),
+    run(sf(sb.from("certificates").select("*, sites(name)")).order("expiry", {ascending:true, nullsFirst:false}).limit(300))
+  ]);
+  S.last = {name: "training", rows: tr, cols: [["Person","person_name"],["Competency","competency"],["Provider","provider"],["Issued","issued"],["Expiry","expiry"],["Site",x => x.sites?.name || ""]]};
+  return `<div class="row" style="margin-bottom:6px"><h2>🎓 Training records</h2>${exportBtn()}</div>
+    <div class="list">${tr.map(r => expItem(r.person_name, r.competency, r.expiry, r.sites?.name)).join("") || empty("📭", "No training records yet")}</div>
+    <div class="sec">📜 Certificates & permits</div>
+    <div class="list">${ce.map(r => expItem(r.name, (r.category || "") + (r.stage === "Applied" ? " · applied" : ""), r.expiry, r.sites?.name)).join("") || empty("📭", "No certificates yet")}</div>`;
 }
 
-async function openDoc(id) {
-  const win = window.open("", "_blank");   // opened first so phone browsers don't block it
-  const { data, error } = await sb.from("documents").select("storage_path,title").eq("id", id).single();
-  if (error || !data) { if (win) win.close(); return toast("You don't have access to this document.", false); }
-  const { data: s, error: e2 } = await sb.storage.from("ehs-documents").createSignedUrl(data.storage_path, 300);
-  if (e2) { if (win) win.close(); return toast("Could not open: " + e2.message, false); }
-  sb.from("audit_log").insert({ action: "open", table_name: "documents", record_id: id });
-  if (win) win.location.href = s.signedUrl; else window.location.href = s.signedUrl;
+/* ===================== APPROVALS ===================== */
+PAGES.approvals = async () => {
+  if (!can("approve")) return denied();
+  const rows = await run(sb.from("access_requests").select("*, who:profiles!requester(full_name, role), sites(name)").order("created_at", {ascending:false}).limit(100));
+  const pend = rows.filter(r => r.status === "pending");
+  const done = rows.filter(r => r.status !== "pending").slice(0, 15);
+  $("#main").innerHTML = header("🔑 Approvals", "Approve people who need to see another area's data") + `
+    <div class="sec">⏳ Waiting for you (${pend.length})</div>
+    <div class="list">${pend.map(r => `<div class="item md">
+      <div class="row"><b>👤 ${esc(r.who?.full_name || "Unknown")}</b>${roleChip(r.who?.role)}</div>
+      <div class="small" style="margin-top:6px">📍 Wants: <b>${esc(r.sites?.name || "")}</b> · 🗓️ ${ft(r.created_at)}</div>
+      <div class="small muted" style="margin-top:6px">💬 ${esc(r.reason)}</div>
+      <div class="pf" style="grid-template-columns:1fr 1fr 1fr">
+        <button type="button" class="p" data-act="decide" data-id="${r.id}" data-days="7">✅ 7 days</button>
+        <button type="button" class="p" data-act="decide" data-id="${r.id}" data-days="30">✅ 30 days</button>
+        <button type="button" class="f" data-act="decide" data-id="${r.id}" data-days="0">❌ Reject</button>
+      </div></div>`).join("") || empty("🎉", "No pending requests")}</div>
+    <div class="sec">🗂️ Recent decisions</div>
+    <div class="list">${done.map(r => `<div class="item ${r.status === "approved" ? "lo" : "hi"}">
+      <div class="row"><b>👤 ${esc(r.who?.full_name || "")} · 📍 ${esc(r.sites?.name || "")}</b>${statusChip(r)}</div>
+      <div class="small muted">${esc(r.reason)}</div></div>`).join("") || empty("📭", "No decisions yet")}</div>`;
+};
+
+/* ===================== ACCESS REQUEST ===================== */
+PAGES.access = async () => {
+  const mine = await run(sb.from("access_requests").select("*, sites(name)").order("created_at", {ascending:false}).limit(30));
+  $("#main").innerHTML = header("🔓 Request access", "Need to see another area? A manager approves it for a set number of days.") + `
+    <div class="card"><form id="fAcc">
+      <label>📍 Area you need</label>${siteField()}
+      <label>💬 Why do you need it?</label>
+      <textarea name="reason" rows="3" required placeholder="e.g. Covering Site B for 2 weeks"></textarea>
+      <button class="btn block" style="margin-top:14px">📨 Send request</button>
+    </form></div>
+    <div class="sec">My requests</div>
+    <div class="list">${mine.map(r => `<div class="item ${r.status === "approved" ? "lo" : r.status === "rejected" ? "hi" : "md"}">
+      <div class="row"><b>📍 ${esc(r.sites?.name || "")}</b>${statusChip(r)}</div>
+      <div class="small muted">${esc(r.reason)}</div></div>`).join("") || empty("📭", "No requests yet")}</div>`;
+};
+
+/* ===================== TRAINING PAGE ===================== */
+PAGES.training = async () => {
+  const [tr, ce] = await Promise.all([
+    run(sf(sb.from("training").select("*, sites(name)")).order("expiry", {ascending:true, nullsFirst:false}).limit(300)),
+    run(sf(sb.from("certificates").select("*, sites(name)")).order("expiry", {ascending:true, nullsFirst:false}).limit(300))
+  ]);
+  $("#main").innerHTML = header("🎓 Training & certificates", "Red = expired · Yellow = expires within 60 days") + `
+    <div class="row" style="margin-bottom:12px">${can("enter") ? `<a class="btn sm" href="#enter/training">＋ Training</a><a class="btn ghost sm" href="#enter/cert">＋ Certificate</a>` : ""}<a class="btn ghost sm" href="#reports/training">📊 Full register</a></div>
+    <div class="sec">🎓 Training records</div>
+    <div class="list">${tr.map(r => expItem(r.person_name, r.competency, r.expiry, r.sites?.name)).join("") || empty("📭", "No training records yet")}</div>
+    <div class="sec">📜 Certificates & permits</div>
+    <div class="list">${ce.map(r => expItem(r.name, (r.category || "") + (r.stage === "Applied" ? " · applied" : ""), r.expiry, r.sites?.name)).join("") || empty("📭", "No certificates yet")}</div>`;
+};
+
+/* ===================== DOCUMENTS ===================== */
+PAGES.docs = async (arg) => {
+  if (arg === "new") {
+    if (!can("upload")) return denied();
+    return docForm();
+  }
+  const [docs, acks] = await Promise.all([
+    run(sb.from("documents").select("*, sites(name), by:profiles!uploaded_by(full_name)").order("created_at", {ascending:false}).limit(300)),
+    run(sb.from("document_acks").select("document_id").eq("user_id", S.user.id))
+  ]);
+  const acked = new Set(acks.map(a => a.document_id));
+  $("#main").innerHTML = header("📁 Documents", "Read-only for most staff. Read it, then tap Acknowledge.", can("upload") ? `<a class="btn sm" href="#docs/new">＋ Upload</a>` : "") + `
+    <div class="list">${docs.map(d => `<div class="item blue">
+      <div class="row"><b>${d.restricted ? "🔒 " : "📄 "}${esc(d.title)}</b>${docChip(d.status)}</div>
+      <div class="small muted" style="margin-top:6px">🔢 ${esc(d.doc_no || "–")} · v${esc(d.version)} · 📂 ${esc(d.category || "General")} · 📍 ${esc(d.sites?.name || "All areas")}</div>
+      <div class="small muted">👤 ${esc(d.by?.full_name || "")} · 🔁 review ${fd(d.review_due)}</div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost sm" data-act="open_doc" data-path="${esc(d.storage_path)}">📂 Open</button>
+        ${acked.has(d.id) ? '<span class="chip ok">✅ You acknowledged</span>' : `<button class="btn ok sm" data-act="ack" data-id="${d.id}">✍️ Acknowledge</button>`}
+      </div></div>`).join("") || empty("📭", "No documents yet")}</div>`;
+};
+function docForm(){
+  $("#main").innerHTML = header("📄 Upload document", "Staff read it. Only managers and HSE Head can change it.") + `
+  <div class="card"><form id="fDoc">
+    <label>📝 Title</label><input name="title" required>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>🔢 Doc number</label><input name="doc_no"></div>
+      <div><label>🏷️ Version</label><input name="version" value="1.0"></div>
+    </div>
+    <label>📂 Category</label>
+    <select name="category">${["Procedure","Work permit","Method statement","Risk assessment","Plan","Form","Register","Legal","Other"].map(c => `<option>${c}</option>`).join("")}</select>
+    <label>🚦 Status</label>
+    <select name="status"><option>Draft</option><option>In review</option><option>Approved</option></select>
+    <label>📍 Area</label>
+    <select name="site_id"><option value="">🏗️ All areas</option>${S.sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>
+    <label>🔁 Review due</label><input type="date" name="review_due">
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="restricted"> 🔒 Restricted (only people I add)</label>
+    <label>📎 File (PDF, Word, Excel or image)</label>
+    <input type="file" name="file" required accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
+    <button class="btn block" style="margin-top:16px">⬆️ Upload</button>
+  </form></div>`;
 }
 
-async function deleteDoc(id) {
-  if (!confirm("Delete this document permanently? This cannot be undone.")) return;
-  const { data } = await sb.from("documents").select("storage_path").eq("id", id).single();
-  if (data) await sb.storage.from("ehs-documents").remove([data.storage_path]);
-  const { error } = await sb.from("documents").delete().eq("id", id);
-  if (error) return toast(error.message, false);
-  toast("Document deleted");
-  viewDocuments();
-}
+/* ===================== ADMIN ===================== */
+PAGES.admin = async () => {
+  if (!can("admin")) return denied();
+  const [people, log] = await Promise.all([
+    run(sb.from("profiles").select("*").order("full_name")),
+    run(sb.from("audit_log").select("*").order("at", {ascending:false}).limit(60))
+  ]);
+  const nameOf = Object.fromEntries(people.map(p => [p.id, p.full_name]));
+  const roleOpts = v => Object.entries(ROLES).map(([k,r]) => `<option value="${k}" ${k === v ? "selected" : ""}>${r.ic} ${r.label}</option>`).join("");
+  const siteOpts = v => `<option value="">— none —</option>` + S.sites.map(s => `<option value="${s.id}" ${s.id === v ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+  $("#main").innerHTML = header("🛠️ Admin", "People, roles, areas and the audit trail") + `
+    <div class="card"><h2>➕ Add an area</h2>
+      <form id="fSite" class="grid" style="grid-template-columns:1fr 1fr auto;gap:10px;margin-top:10px;align-items:end">
+        <div><label>Name</label><input name="name" required></div>
+        <div><label>Location</label><input name="location"></div>
+        <button class="btn">Add</button>
+      </form></div>
+    <div class="sec">👥 People (${people.length})</div>
+    <p class="small muted">To add someone: create their login in Supabase → Authentication → Users → Add user (tick Auto Confirm). They appear here. Then set name, role and area and tap Save.</p>
+    <div class="list">${people.map(p => `<div class="item" data-user="${p.id}">
+      <div class="grid">
+        <input name="name" value="${esc(p.full_name || "")}" placeholder="Full name">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px">
+          <select name="role">${roleOpts(p.role)}</select>
+          <select name="site_id">${siteOpts(p.site_id)}</select>
+        </div>
+        <div class="row"><span class="small muted">joined ${fd(p.created_at)}</span><button class="btn sm" data-act="save_user" data-id="${p.id}">💾 Save</button></div>
+      </div></div>`).join("")}</div>
+    <div class="sec">🧾 Audit trail (latest 60)</div>
+    <div class="card scroll"><table><tr><th>When</th><th>Who</th><th>Action</th><th>Table</th></tr>
+    ${log.map(l => `<tr><td>${ft(l.at)}</td><td>${esc(nameOf[l.user_id] || "–")}</td><td>${esc(l.action)}</td><td>${esc(l.table_name || "")}</td></tr>`).join("")}
+    </table></div>`;
+};
 
-function uploadPanel() {
-  return `<section class="card">
-    <h2 style="margin-bottom:14px">Upload controlled document</h2>
-    <form id="upForm" class="fgrid">
-      <label class="full">File (PDF, Word or Excel, up to 50 MB)<input type="file" name="file" required></label>
-      <label class="full">Title<input name="title" required></label>
-      <label>Document number<input name="doc_no" placeholder="e.g. HSE-PLN-001"></label>
-      <label>Version<input name="version" value="1.0"></label>
-      <label>Category<select name="category">${DOC_CATS.map(c => `<option>${esc(c)}</option>`).join("")}</select></label>
-      <label>Status<select name="status">${DOC_STATUS.map(c => `<option>${c}</option>`).join("")}</select></label>
-      <label>Site<select name="site_id"><option value="">All sites</option>${siteOptions(siteFilter)}</select></label>
-      <label>Next review date<input type="date" name="review_due" value="${plusDays(365)}"></label>
-      <label class="check full"><input type="checkbox" name="restricted"> Restricted: only people the admin adds can open it</label>
-      <div class="full"><button class="btn primary" type="submit">Upload</button>
-      <span class="muted small" id="upMsg" role="status" style="margin-left:10px"></span></div>
-    </form></section>`;
-}
+/* ===================== MORE ===================== */
+PAGES.more = () => {
+  $("#main").innerHTML = header("☰ Menu") + `
+    <div class="tiles">${items().map(i => `<a class="tile" href="#${i.id}"><div class="ic">${i.ic}</div><b>${i.t}</b></a>`).join("")}</div>
+    <div class="card" style="margin-top:14px"><b>${esc(S.profile.full_name || "")}</b><div class="small muted">${ROLES[role()]?.label || role()}</div>
+    <button class="btn ghost block" style="margin-top:12px" data-act="signout">🚪 Sign out</button></div>`;
+};
+PAGES.approve = PAGES.approvals;
 
-function bindUpload() {
-  const f = $("#upForm");
-  if (!f) return;
-  f.onsubmit = async (e) => {
-    e.preventDefault();
-    const file = f.file.files[0];
-    if (!file) return;
-    if (file.size > 50 * 1024 * 1024) return toast("File is larger than 50 MB", false);
-    const path = `${crypto.randomUUID()}/${file.name.replace(/[^\w.-]/g, "_")}`;
+/* ===================== ACTIONS (buttons) ===================== */
+const ACTS = {
+  pf: (b) => {
+    const row = b.closest("[data-item]");
+    const s = b.dataset.s;
+    row.dataset.s = s;
+    row.querySelectorAll(".pf button").forEach(x => x.classList.toggle("on", x === b));
+    row.querySelector(".note").classList.toggle("hidden", s !== "fail");
+    updProg();
+  },
+  act_status: async (b) => {
+    const s = b.dataset.s;
+    await run(sb.from("actions").update({status: s, closed_at: s === "Closed" ? new Date().toISOString() : null}).eq("id", b.dataset.id));
+    audit("update", "actions", b.dataset.id);
+    toast("✅ Updated");
+    route();
+  },
+  decide: async (b) => {
+    const d = +b.dataset.days;
+    const patch = d === 0 ? {status: "rejected"} : {status: "approved", expires_at: new Date(Date.now() + d*864e5).toISOString()};
+    await run(sb.from("access_requests").update({...patch, decided_by: S.user.id, decided_at: new Date().toISOString()}).eq("id", b.dataset.id));
+    audit("decide", "access_requests", b.dataset.id);
+    toast(d ? "✅ Approved for " + d + " days" : "❌ Rejected");
+    route();
+  },
+  ack: async (b) => {
+    await run(sb.from("document_acks").upsert({document_id: b.dataset.id, user_id: S.user.id}));
+    toast("✍️ Acknowledged");
+    route();
+  },
+  open_doc: async (b) => {
+    const w = window.open("", "_blank");
+    const {data, error} = await sb.storage.from(CONFIG.bucket).createSignedUrl(b.dataset.path, 300);
+    if (error) { if (w) w.close(); throw error; }
+    if (w) w.location = data.signedUrl; else window.open(data.signedUrl, "_blank");
+    audit("view", "documents", b.dataset.path);
+  },
+  save_user: async (b) => {
+    const row = b.closest("[data-user]");
+    const id = b.dataset.id;
+    await run(sb.from("profiles").update({
+      full_name: row.querySelector("[name=name]").value.trim() || null,
+      role: row.querySelector("[name=role]").value,
+      site_id: row.querySelector("[name=site_id]").value || null
+    }).eq("id", id));
+    audit("update", "profiles", id);
+    toast("💾 Saved");
+    if (id === S.user.id) { await loadProfile(); buildNav(); }
+  },
+  export: () => { if (!S.last) return toast("Nothing to export"); exportCSV(S.last.name, S.last.rows, S.last.cols); },
+  signout: async () => { await sb.auth.signOut(); S.user = null; S.profile = null; location.hash = ""; showLogin(); }
+};
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  e.preventDefault();
+  try { await ACTS[b.dataset.act](b); } catch (x) { err(x); }
+});
+
+/* ===================== FORMS ===================== */
+const FORMS = {
+  fInc: async (f) => {
+    const d = fdata(f);
+    const kind = f.dataset.kind;
     const row = {
-      title: f.title.value.trim(),
-      doc_no: f.doc_no.value.trim() || null,
-      version: f.version.value.trim() || "1.0",
-      category: f.category.value,
-      status: f.status.value,
-      site_id: f.site_id.value || null,
-      review_due: f.review_due.value || null,
-      restricted: f.restricted.checked,
-      storage_path: path,
-      file_name: file.name
+      site_id: d.site_id, event_type: kind,
+      classification: kind === "incident" ? d.classification.replace(/^\S+\s/, "") : null,
+      occurred_at: new Date(d.occurred_at).toISOString(),
+      area: d.area, severity: +d.severity, likelihood: +d.likelihood,
+      description: d.description, root_cause: d.root_cause || null
     };
-    $("#upMsg").textContent = "Uploading…";
-    const { error } = await sb.from("documents").insert(row);
-    if (error) { $("#upMsg").textContent = "Not saved: " + error.message; return; }
-    const { error: e2 } = await sb.storage.from("ehs-documents").upload(path, file, {
-      contentType: file.type || "application/octet-stream", upsert: false
-    });
-    if (e2) {
-      await sb.from("documents").delete().eq("storage_path", path);
-      $("#upMsg").textContent = "Upload failed: " + e2.message;
-      return;
+    const inc = await run(sb.from("incidents").insert(row).select("id").single());
+    if (d.ac_desc) {
+      await run(sb.from("actions").insert({site_id: d.site_id, description: d.ac_desc, owner: d.ac_owner || null,
+        due_date: d.ac_due || addDays(14), priority: d.ac_priority || "Medium", source_incident_id: inc.id}));
     }
-    docUploadOpen = false;
-    toast("Document uploaded");
-    viewDocuments();
-  };
-}
+    audit("create", "incidents", inc.id);
+    toast("✅ Report saved");
+    location.hash = "#home";
+  },
+  fMan: async (f) => {
+    const d = fdata(f);
+    await run(sb.from("manhours").upsert({site_id: d.site_id, period: d.month + "-01", hours: +d.hours}, {onConflict: "site_id,period"}));
+    audit("upsert", "manhours", d.site_id);
+    toast("✅ Manhours saved");
+    location.hash = "#home";
+  },
+  fTrn: async (f) => {
+    const d = fdata(f);
+    await run(sb.from("training").insert({site_id: d.site_id, person_name: d.person_name, competency: d.competency,
+      provider: d.provider || null, issued: d.issued || null, expiry: d.expiry || null}));
+    toast("✅ Training saved");
+    location.hash = "#training";
+  },
+  fCert: async (f) => {
+    const d = fdata(f);
+    await run(sb.from("certificates").insert({site_id: d.site_id, name: d.name, category: d.category, stage: d.stage,
+      agency: d.agency || null, expiry: d.expiry || null, notes: d.notes || null}));
+    toast("✅ Certificate saved");
+    location.hash = "#training";
+  },
+  fAct: async (f) => {
+    const d = fdata(f);
+    await run(sb.from("actions").insert({site_id: d.site_id, description: d.description, owner: d.owner || null,
+      due_date: d.due_date, priority: d.priority}));
+    toast("✅ Action saved");
+    location.hash = "#actions";
+  },
+  fIns: async (f) => {
+    const tpl = S.tpl;
+    const site_id = f.elements["site_id"].value;
+    const answers = {};
+    const missing = [];
+    let pass = 0, fail = 0;
+    tpl.items.forEach(it => {
+      const row = f.querySelector(`[data-item="${CSS.escape(it.id)}"]`);
+      const s = row.dataset.s;
+      const note = row.querySelector(".note").value.trim();
+      if (!s) { missing.push(it); return; }
+      answers[it.id] = {status: s, note};
+      if (s === "pass") pass++;
+      if (s === "fail") fail++;
+    });
+    if (missing.length) return toast(`Answer every check (${missing.length} left)`);
+    const noNote = tpl.items.filter(it => answers[it.id].status === "fail" && !answers[it.id].note);
+    if (noNote.length) return toast("Write a note for every Fail");
+    const score = pass + fail ? Math.round(pass * 100 / (pass + fail)) : 100;
+    const ins = await run(sb.from("inspections").insert({site_id, template_id: tpl.id, answers, score, fails: fail}).select("id").single());
+    const acts = tpl.items.filter(it => answers[it.id].status === "fail").map(it => ({
+      site_id, description: `[${tpl.name}] ${it.text} — ${answers[it.id].note}`,
+      due_date: addDays(it.critical ? 3 : 7), priority: it.critical ? "High" : "Medium", source_inspection_id: ins.id
+    }));
+    if (acts.length) await run(sb.from("actions").insert(acts));
+    audit("create", "inspections", ins.id);
+    toast(`✅ Saved · score ${score}% · ${acts.length} action(s) created`);
+    location.hash = "#inspections";
+  },
+  fDoc: async (f) => {
+    const d = fdata(f);
+    const file = f.elements.file.files[0];
+    if (!file) throw new Error("Choose a file first");
+    const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const up = await sb.storage.from(CONFIG.bucket).upload(path, file, {upsert: false, contentType: file.type || "application/octet-stream"});
+    if (up.error) throw up.error;
+    try {
+      await run(sb.from("documents").insert({title: d.title, doc_no: d.doc_no || null, version: d.version || "1.0",
+        category: d.category, status: d.status, site_id: d.site_id || null, file_name: file.name, storage_path: path,
+        review_due: d.review_due || null, restricted: !!d.restricted}));
+    } catch (e) {
+      await sb.storage.from(CONFIG.bucket).remove([path]);
+      throw e;
+    }
+    audit("create", "documents", path);
+    toast("✅ Uploaded");
+    location.hash = "#docs";
+  },
+  fAcc: async (f) => {
+    const d = fdata(f);
+    await run(sb.from("access_requests").insert({site_id: d.site_id, reason: d.reason}));
+    toast("📨 Request sent to your manager");
+    location.hash = "#access";
+  },
+  fSite: async (f) => {
+    const d = fdata(f);
+    await run(sb.from("sites").insert({name: d.name, location: d.location || null}));
+    await loadSites();
+    toast("✅ Area added");
+    buildNav();
+    route();
+  },
+  fRange: async (f) => {
+    S.range = {from: f.elements.fromD.value, to: f.elements.toD.value};
+    route();
+  }
+};
+document.addEventListener("submit", async (e) => {
+  const H = FORMS[e.target.id];
+  if (!H) return;
+  e.preventDefault();
+  const btn = e.target.querySelector("button");
+  if (btn) btn.disabled = true;
+  try { await H(e.target); }
+  catch (x) { err(x); }
+  finally { if (btn) btn.disabled = false; }
+});
 
-/* ============ START ============ */
-boot();
+/* ===================== SITE PICKER ===================== */
+document.addEventListener("change", (e) => {
+  if (e.target.id === "siteSel") { S.site = e.target.value; route(); }
+});
+
+/* ===================== ROUTES WITH ARGUMENTS ===================== */
+PAGES.inspect = PAGES.inspect;
 </script>
 </body>
 </html>
