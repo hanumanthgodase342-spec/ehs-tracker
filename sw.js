@@ -1,6 +1,6 @@
-// Service worker: stores the app files on the phone so it opens offline.
-// Network first (so updates show up), falls back to the saved copy when offline.
-const CACHE = "ehs-tracker-v2";
+// Service worker: saves the app so it opens offline.
+// Live database requests always go to the internet (never served from a stale copy).
+const CACHE = "ehs-app-v4";
 const FILES = ["index.html", "manifest.json", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", event => {
@@ -20,18 +20,22 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
+  const req = event.request;
+  if (req.method !== "GET") return;
+  const host = new URL(req.url).hostname;
+  if (host.endsWith("supabase.co")) return;
+
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then(res => {
-        if (res.ok && new URL(event.request.url).origin === self.location.origin) {
+        if (res.ok || res.type === "opaque") {
           const copy = res.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, copy));
+          caches.open(CACHE).then(cache => cache.put(req, copy));
         }
         return res;
       })
       .catch(() =>
-        caches.match(event.request).then(hit => hit || caches.match(self.registration.scope + "index.html"))
+        caches.match(req).then(hit => hit || caches.match(self.registration.scope + "index.html"))
       )
   );
 });
