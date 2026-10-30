@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0F172A">
+<meta name="theme-color" content="#1B2A41">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>EHS Command</title>
@@ -146,5 +146,13 @@ td.some{background:#F0FDF4}
 </div>
 
 <script src="app.js"></script>
+<script>
+  // Register the service worker so the app works offline and can be installed.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(err => console.warn("SW registration failed", err));
+    });
+  }
+</script>
 </body>
 </html>
