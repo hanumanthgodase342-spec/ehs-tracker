@@ -1,6 +1,6 @@
 // Service worker: saves the app so it opens offline.
 // Live database requests always go to the internet (never served from a stale copy).
-const CACHE = "ehs-app-v5";
+const CACHE = "ehs-app-v6";
 const FILES = ["index.html", "app.js", "manifest.json", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", event => {
