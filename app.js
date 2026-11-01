@@ -395,8 +395,50 @@ async function loadTemplates(){
   S.TPLS = await withCache("templates", sb.from("checklist_templates").select("id,name,category,items").order("category"));
   S.TPLS.forEach(t => { TPL_NAME[t.id] = t.name; });
 }
+/* ---------- Passwords: rules and known-leak check (free, no paid plan) ---------- */
+async function pwnedCount(pw){
+  // Only the first 5 characters of the SHA-1 hash leave the phone (k-anonymity)
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
+  const hex = Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+  let res;
+  try { res = await fetch("https://api.pwnedpasswords.com/range/" + hex.slice(0, 5)); }
+  catch (e) { throw new Error("Connect to the internet to check the password, then try again."); }
+  if (!res.ok) throw new Error("Could not check the password right now. Try again.");
+  const suffix = hex.slice(5);
+  for (const line of (await res.text()).split("\n")) {
+    const [s, n] = line.trim().split(":");
+    if (s === suffix) return +n;
+  }
+  return 0;
+}
+async function passwordProblem(pw, email){
+  if (pw.length < 10) return "Use at least 10 characters.";
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) return "Use both letters and numbers.";
+  const namePart = (email || "").split("@")[0].toLowerCase();
+  if (namePart.length > 2 && pw.toLowerCase().includes(namePart)) return "Do not include your email name in the password.";
+  if (await pwnedCount(pw) > 0) return "This password appears in known data leaks. Choose a different one.";
+  return null;
+}
+function passwordForm(forced){
+  return `<form id="fPwd" class="card" style="width:100%">
+    <h1 style="font-size:20px">${forced ? "🔑 Set your new password" : "🔑 Change password"}</h1>
+    <p class="small muted">${forced ? "Your administrator gave you a temporary password. Choose your own password to continue." : "At least 10 characters, with letters and numbers."}</p>
+    <label>New password</label><input name="p1" type="password" autocomplete="new-password" required minlength="10">
+    <label>Type it again</label><input name="p2" type="password" autocomplete="new-password" required minlength="10">
+    <button class="btn block" style="margin-top:16px">Save password</button>
+    <p class="small" id="pwdMsg"></p></form>`;
+}
+function showForcedPassword(){
+  const b = $("#boot");
+  b.innerHTML = `<div style="width:100%;max-width:380px">${passwordForm(true)}</div>`;
+  b.classList.remove("hidden");
+  $("#login").classList.add("hidden");
+  $("#app").classList.add("hidden");
+}
+
 async function startApp(user){
   S.user = user;
+  if (user.user_metadata?.must_change_password) return showForcedPassword();
   await Promise.all([loadProfile(), loadSites(), loadLists(), loadTemplates()]);
   S.site = pw() ? "all" : (S.profile.site_id || S.sites[0]?.id || "all");
   buildNav();
@@ -1025,6 +1067,16 @@ PAGES.admin = async () => {
   const listKey = S.adminList || Object.keys(LIST_LABELS)[0];
   const values = S.LK[listKey] || [];
   $("#main").innerHTML = header("🛠️ Admin", "People, roles, areas, dropdown lists and the audit trail") + `
+    <div class="card"><h2>👤 Create a user account</h2>
+      <p class="small muted">Creates a login with a temporary password. Share it privately. The person must choose their own password at first sign-in.</p>
+      <form id="fUser" class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div><label>Full name</label><input name="full_name" required></div>
+        <div><label>Email (login)</label><input name="email" type="email" required autocomplete="off"></div>
+        <div><label>Role</label><select name="role" required>${roleOpts("officer")}</select></div>
+        <div><label>Area (site)</label><select name="site_id">${siteOpts("")}</select></div>
+        <div style="grid-column:1/-1"><button class="btn">➕ Create account</button></div>
+        <p id="userMsg" class="small" style="grid-column:1/-1"></p>
+      </form></div>
     <div class="card"><h2>➕ Add an area</h2>
       <form id="fSite" class="grid" style="grid-template-columns:1fr 1fr auto;gap:10px;margin-top:10px;align-items:end">
         <div><label>Name</label><input name="name" required></div>
@@ -1062,7 +1114,11 @@ PAGES.more = () => {
       <a class="tile" href="#incidents"><div class="ic">🚨</div><b>Incidents</b></a>
       <a class="tile" href="#inspections"><div class="ic">✅</div><b>Inspections</b></a></div>
     <div class="card" style="margin-top:14px"><b>${esc(S.profile.full_name || "")}</b><div class="small muted">${ROLES[role()]?.label || role()}</div>
+    <button class="btn ghost block" style="margin-top:12px" onclick="location.hash='#password'">🔑 Change password</button>
     <button class="btn ghost block" style="margin-top:12px" data-act="signout">🚪 Sign out</button></div>`;
+};
+PAGES.password = () => {
+  $("#main").innerHTML = header("🔑 Change password") + `<div style="max-width:440px">${passwordForm(false)}</div>`;
 };
 PAGES.approve = PAGES.approvals;
 
@@ -1285,6 +1341,40 @@ const FORMS = {
     await run(sb.from("access_requests").insert({site_id: d.site_id, reason: d.reason}));
     toast("📨 Request sent to your manager");
     location.hash = "#access";
+  },
+  fUser: async (f) => {
+    const d = fdata(f);
+    const msg = $("#userMsg");
+    msg.textContent = "Creating account…";
+    const {data, error} = await sb.functions.invoke("create-user", {
+      body: {email: d.email, full_name: d.full_name, role: d.role, site_id: d.site_id || null}
+    });
+    if (error) {
+      let text = error.message;
+      try { text = (await error.context.json()).error || text; } catch (_) {}
+      msg.textContent = "❌ " + text;
+      return;
+    }
+    if (data?.error) { msg.textContent = "❌ " + data.error; return; }
+    msg.innerHTML = `✅ Account created for <b>${esc(d.email)}</b>.<br>Temporary password (copy it now, it is not shown again):<br><code style="font-size:16px;user-select:all">${esc(data.temporary_password)}</code><br><span class="muted">The person must choose a new password at first sign-in.</span>`;
+    f.reset();
+    toast("✅ User created");
+  },
+  fPwd: async (f) => {
+    const d = fdata(f);
+    const msg = $("#pwdMsg");
+    const forced = !$("#boot").classList.contains("hidden");
+    if (d.p1 !== d.p2) { msg.textContent = "❌ The two passwords do not match."; return; }
+    try {
+      const problem = await passwordProblem(d.p1, S.user?.email);
+      if (problem) { msg.textContent = "❌ " + problem; return; }
+    } catch (e) { msg.textContent = "❌ " + e.message; return; }
+    const {error} = await sb.auth.updateUser({password: d.p1, data: {must_change_password: false}});
+    if (error) { msg.textContent = "❌ " + error.message; return; }
+    toast("✅ Password saved");
+    const {data: fresh} = await sb.auth.getUser();
+    if (forced) await startApp(fresh.user);
+    else location.hash = "#home";
   },
   fSite: async (f) => {
     const d = fdata(f);
