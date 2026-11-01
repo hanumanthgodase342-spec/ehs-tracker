@@ -384,15 +384,15 @@ async function route(){
 window.addEventListener("hashchange", route);
 
 /* ---------- Login and start ---------- */
-async function loadProfile(){ S.profile = await run(sb.from("profiles").select("*").eq("id", S.user.id).single()); }
-async function loadSites(){ S.sites = await run(sb.from("sites").select("id,name,location").order("name")); }
+async function loadProfile(){ S.profile = await withCache("profile:" + S.user.id, sb.from("profiles").select("*").eq("id", S.user.id).single()); }
+async function loadSites(){ S.sites = await withCache("sites", sb.from("sites").select("id,name,location").order("name")); }
 async function loadLists(){
-  const rows = await run(sb.from("lookups").select("list_key,value,sort").order("sort").order("value"));
+  const rows = await withCache("lookups", sb.from("lookups").select("list_key,value,sort").order("sort").order("value"));
   S.LK = {};
   rows.forEach(r => { (S.LK[r.list_key] = S.LK[r.list_key] || []).push(r.value); });
 }
 async function loadTemplates(){
-  S.TPLS = await run(sb.from("checklist_templates").select("id,name,category,items").order("category"));
+  S.TPLS = await withCache("templates", sb.from("checklist_templates").select("id,name,category,items").order("category"));
   S.TPLS.forEach(t => { TPL_NAME[t.id] = t.name; });
 }
 async function startApp(user){
@@ -1103,10 +1103,11 @@ const ACTS = {
     audit("view", "documents", b.dataset.path);
   },
   del_rec: async (b) => {
-    if (!confirm("Delete this record? This cannot be undone.")) return;
-    await run(sb.from("records").delete().eq("id", b.dataset.id));
-    audit("delete", "records", b.dataset.id);
-    toast("🗑️ Deleted");
+    const reason = (prompt("Why are you deleting this record? (required, kept in the audit trail)") || "").trim();
+    if (!reason) return toast("Deletion cancelled: a reason is required");
+    if (!confirm("Mark this record as deleted? Admins can still see it in the audit trail.")) return;
+    await run(sb.rpc("soft_delete_record", {p_id: b.dataset.id, p_reason: reason}));
+    toast("🗑️ Deleted (kept in audit trail)");
     route();
   },
   lk_add: async (b) => {
@@ -1136,6 +1137,7 @@ const ACTS = {
     toast("💾 Saved");
     if (id === S.user.id) { await loadProfile(); buildNav(); }
   },
+  sync_now: async () => { await OFF.flush(); route(); },
   export: () => { if (!S.last) return toast("Nothing to export"); exportCSV(S.last.name, S.last.rows, S.last.cols); },
   signout: async () => { await sb.auth.signOut(); S.user = null; S.profile = null; location.hash = ""; showLogin(); }
 };
@@ -1145,6 +1147,20 @@ document.addEventListener("click", async (e) => {
   e.preventDefault();
   try { await ACTS[b.dataset.act](b); } catch (x) { err(x); }
 });
+
+/* ===================== OFFLINE QUEUE PAGE ===================== */
+PAGES.offline = async () => {
+  const items = (await OFF.all()).sort((a, b) => a.qid - b.qid);
+  const rows = items.map(i => `
+    <div class="item ${i.status === "failed" ? "hi" : "md"}">
+      <b>${esc(i.table)} · ${esc(i.op)}${i.payload?.module ? " · " + esc(i.payload.module) : ""}</b>
+      <div class="small muted">Saved ${ft(i.created_at)} · ${i.status === "failed" ? "⚠️ Needs attention" : "⏳ Waiting to sync"}</div>
+      ${i.error ? `<div class="small" style="margin-top:6px;color:var(--bad)">${esc(i.error)}</div>` : ""}
+    </div>`).join("");
+  $("#main").innerHTML = header("📴 Offline queue", "Entries saved on this phone and not yet on the server")
+    + `<div class="row" style="margin-bottom:10px"><button class="btn sm" data-act="sync_now">🔄 Sync now</button></div>`
+    + (rows ? `<div class="list">${rows}</div>` : empty("✅", "Nothing waiting. Everything is synced."));
+};
 
 /* ===================== FORMS ===================== */
 const FORMS = {
@@ -1163,13 +1179,27 @@ const FORMS = {
     });
     const payload = {module: key, site_id: d.site_id, rec_date: d.rec_date, plan_id: planId, data};
     if (mod.status && !id) payload.status = mod.status;
-    if (id) {
-      await run(sb.from("records").update(payload).eq("id", id));
-      audit("update", "records", id);
-    } else {
-      const row = await run(sb.from("records").insert(payload).select("id").single());
-      audit("create", "records", row.id);
-      if (planId) await run(sb.from("records").update({status: "Completed"}).eq("id", planId));
+    try {
+      if (id) {
+        await run(sb.from("records").update(payload).eq("id", id));
+        audit("update", "records", id);
+      } else {
+        // The ID is made on the phone, so an offline entry and its retry can never create two records
+        const recId = crypto.randomUUID();
+        payload.data.client_created_at = new Date().toISOString();
+        await run(sb.from("records").insert({...payload, id: recId}));
+        audit("create", "records", recId);
+        if (planId) await run(sb.from("records").update({status: "Completed"}).eq("id", planId));
+      }
+    } catch (e) {
+      if (!OFF.isNetworkError(e)) throw e;        // a real rejection: show it to the user
+      // No connection: keep the entry on the phone and send it later
+      if (id) queueRecord({insert: false, id, payload});
+      else { payload.data.client_created_at = new Date().toISOString(); queueRecord({insert: true, payload, planId}); }
+      toast("📴 Saved on this phone. It will sync when you are online.");
+      location.hash = "#m/" + key;
+      OFF.banner();
+      return;
     }
     toast("✅ Saved");
     location.hash = "#m/" + key;
